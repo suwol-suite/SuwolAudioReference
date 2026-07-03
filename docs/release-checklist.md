@@ -92,6 +92,8 @@ Include:
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
 - Release tags use the `vX.Y.Z` format, for example `v0.1.0`.
+- The tag must match `package.json` version exactly, with a leading `v`.
+- `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
 - Tag pushes create a GitHub Release and upload Windows/Linux zip assets.
 - Before creating a tag, confirm `package.json` version and the matching `docs/release-notes-X.Y.Z.md` file exist.
 - Do not tag from an unverified working tree.

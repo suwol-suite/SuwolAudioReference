@@ -98,4 +98,16 @@ describe("release readiness docs and checks", () => {
 
     expect(output).toContain(`release artifacts ok: ${productName} ${APP_VERSION} (win)`);
   });
+
+  it("checks release tags against package version", () => {
+    const output = execFileSync(
+      process.execPath,
+      [join(process.cwd(), "scripts", "check-release-tag.mjs"), `--tag=v${APP_VERSION}`],
+      {
+        encoding: "utf8",
+      },
+    );
+
+    expect(output).toContain(`release tag check ok: v${APP_VERSION}`);
+  });
 });

@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check release tag
+        run: npm.cmd run check:release-tag
+
       - name: Typecheck
         run: npm.cmd run typecheck
 
@@ -88,6 +91,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check release tag
+        run: npm run check:release-tag
 
       - name: Typecheck
         run: npm run typecheck

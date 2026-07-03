@@ -18,6 +18,7 @@
     "fixtures:audio": "node scripts/generate-test-audio-fixtures.mjs",
     "fixtures:large": "node scripts/generate-large-audio-fixtures.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "check:release-tag": "node scripts/check-release-tag.mjs",
     "check:release": "node scripts/check-release-artifacts.mjs",
     "zip:win": "node scripts/zip-release.mjs win",
     "zip:linux": "node scripts/zip-release.mjs linux",

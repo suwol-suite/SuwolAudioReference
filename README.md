@@ -297,7 +297,9 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-For the next release, update `package.json` version, add a matching `docs/release-notes-x.y.z.md`, verify the release checks, then tag as `vX.Y.Z`.
+The release tag must match `package.json` exactly. For example, `package.json` version `0.1.0` must use tag `v0.1.0`. CI runs `npm run check:release-tag` and fails the release build if the tag, package version, and `docs/release-notes-X.Y.Z.md` do not line up.
+
+For the next release, update `package.json` version, add a matching `docs/release-notes-X.Y.Z.md`, verify the release checks, then tag as `vX.Y.Z`.
 
 Windows users:
 
