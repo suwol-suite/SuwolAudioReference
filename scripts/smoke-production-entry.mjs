@@ -47,11 +47,21 @@ for (const needle of [
 }
 
 const rendererIndex = await readFile(join(root, "dist", "renderer", "index.html"), "utf8");
-const rendererAssetMatches = Array.from(rendererIndex.matchAll(/src="([^"]+\.js)"/g), (match) => match[1]);
+const rendererAssetMatches = Array.from(rendererIndex.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g), (match) => match[1]);
 if (rendererAssetMatches.length === 0) {
+  throw new Error("Renderer index does not reference JS/CSS assets");
+}
+for (const assetPath of rendererAssetMatches) {
+  if (assetPath.startsWith("/")) {
+    throw new Error(`Renderer asset path must be relative for packaged file:// loading: ${assetPath}`);
+  }
+  await access(join(root, "dist", "renderer", assetPath.replace(/^\.\//, "")));
+}
+const rendererScriptPath = rendererAssetMatches.find((assetPath) => assetPath.endsWith(".js"));
+if (!rendererScriptPath) {
   throw new Error("Renderer index does not reference a JS bundle");
 }
-const rendererBundle = await readFile(join(root, "dist", "renderer", rendererAssetMatches[0].replace(/^\//, "")), "utf8");
+const rendererBundle = await readFile(join(root, "dist", "renderer", rendererScriptPath.replace(/^\.\//, "")), "utf8");
 for (const needle of ["Similar Sounds", "Open Log Folder", "The screen could not be rendered", "0.1.0"]) {
   if (!rendererBundle.includes(needle)) {
     throw new Error(`Renderer bundle does not contain expected i18n marker: ${needle}`);
