@@ -1,0 +1,14 @@
+{
+  "menu.file": "파일",
+  "menu.newLibrary": "새 라이브러리",
+  "menu.openLibrary": "라이브러리 열기",
+  "menu.import": "가져오기",
+  "menu.quit": "종료",
+  "menu.view": "보기",
+  "menu.reload": "새로고침",
+  "menu.help": "도움말",
+  "dialog.libraryCreate": "새 라이브러리 폴더 선택",
+  "dialog.libraryOpen": "라이브러리 폴더 열기",
+  "dialog.importFiles": "오디오/reference 파일 가져오기",
+  "dialog.assetFilterName": "Suwol Audio Assets"
+}

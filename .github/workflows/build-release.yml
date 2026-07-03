@@ -1,0 +1,149 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Windows zip
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm.cmd run typecheck
+
+      - name: Check i18n
+        run: npm.cmd run check:i18n
+
+      - name: Test
+        run: npm.cmd test
+
+      - name: Audit
+        run: npm.cmd run audit
+
+      - name: Build
+        run: npm.cmd run build
+
+      - name: Production entry smoke
+        run: npm.cmd run smoke:production-entry
+
+      - name: Package Windows directory
+        run: npm.cmd run dist:win:dir
+
+      - name: Create Windows zip
+        run: npm.cmd run zip:win
+
+      - name: Check Windows release artifacts
+        run: npm.cmd run check:release -- --platform win
+
+      - name: Upload Windows zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Suwol Audio Reference Windows x64
+          path: release/*.zip
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux zip
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Linux package prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip libnss3 libatk-bridge2.0-0 libgtk-3-0 libxss1
+          sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check i18n
+        run: npm run check:i18n
+
+      - name: Test
+        run: npm test
+
+      - name: Audit
+        run: npm run audit
+
+      - name: Build
+        run: npm run build
+
+      - name: Production entry smoke
+        run: npm run smoke:production-entry
+
+      - name: Package Linux directory
+        run: npm run dist:linux:dir
+
+      - name: Create Linux zip
+        run: npm run zip:linux
+
+      - name: Check Linux release artifacts
+        run: npm run check:release -- --platform linux
+
+      - name: Upload Linux zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Suwol Audio Reference Linux x64
+          path: release/*.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs:
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release zips
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Suwol Audio Reference ${{ github.ref_name }}
+          body_path: docs/release-notes-0.1.0.md
+          files: artifacts/*.zip

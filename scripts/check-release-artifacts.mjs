@@ -1,0 +1,170 @@
+import { access, readFile, readdir, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const EXPECTED_APP_ID = "work.suwol.audio-reference";
+const EXPECTED_PRODUCT_NAME = "Suwol Audio Reference";
+const VALID_PLATFORMS = new Set(["win", "linux", "all"]);
+
+function parsePlatform(argv) {
+  const explicit = argv.find((arg) => arg.startsWith("--platform="));
+  if (explicit) {
+    return explicit.split("=")[1];
+  }
+  const index = argv.indexOf("--platform");
+  if (index >= 0) {
+    return argv[index + 1];
+  }
+  return "win";
+}
+
+async function assertFile(path, label) {
+  await access(path);
+  const stats = await stat(path);
+  if (!stats.isFile() || stats.size <= 0) {
+    throw new Error(`${label} is missing or empty: ${path}`);
+  }
+}
+
+async function assertDirectory(path, label) {
+  await access(path);
+  const stats = await stat(path);
+  if (!stats.isDirectory()) {
+    throw new Error(`${label} is not a directory: ${path}`);
+  }
+}
+
+async function hasFile(path) {
+  try {
+    const stats = await stat(path);
+    return stats.isFile() && stats.size > 0;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function assertPackagedResources(unpackedPath, label) {
+  const resourcesPath = join(unpackedPath, "resources");
+  await assertDirectory(resourcesPath, `${label} resources`);
+  const resources = await readdir(resourcesPath);
+  if (!resources.includes("app.asar") && !resources.includes("app")) {
+    throw new Error(`${label} resources do not contain app.asar or app directory`);
+  }
+}
+
+async function assertLinuxExecutable(root, productName, packageName) {
+  const linuxUnpacked = join(root, "release", "linux-unpacked");
+  const candidates = [
+    join(linuxUnpacked, packageName),
+    join(linuxUnpacked, productName),
+    join(linuxUnpacked, productName.replace(/\s+/g, "-").toLowerCase()),
+  ];
+
+  for (const candidate of candidates) {
+    if (await hasFile(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Linux executable was not found in ${linuxUnpacked}`);
+}
+
+export async function checkReleaseArtifacts(root = process.cwd(), platform = "win") {
+  if (!VALID_PLATFORMS.has(platform)) {
+    throw new Error(`Unknown release artifact platform "${platform}". Use win, linux, or all.`);
+  }
+
+  const packagePath = join(root, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  const version = packageJson.version;
+  const productName = packageJson.build?.productName;
+  const appId = packageJson.build?.appId;
+
+  if (!version || typeof version !== "string") {
+    throw new Error("package.json version is missing");
+  }
+  if (productName !== EXPECTED_PRODUCT_NAME) {
+    throw new Error(`Unexpected productName: ${productName}`);
+  }
+  if (appId !== EXPECTED_APP_ID) {
+    throw new Error(`Unexpected appId: ${appId}`);
+  }
+  if (packageJson.license !== "Apache-2.0") {
+    throw new Error(`Unexpected license: ${packageJson.license}`);
+  }
+
+  const requiredFiles = [
+    ["README.md", "README"],
+    ["LICENSE", "LICENSE"],
+    ["THIRD_PARTY_NOTICES.md", "third-party notices"],
+    [`docs/release-notes-${version}.md`, "release notes"],
+    ["docs/known-issues.md", "known issues"],
+    ["docs/windows-distribution.md", "Windows distribution guide"],
+    ["docs/linux-distribution.md", "Linux distribution guide"],
+    ["docs/manual-qa.md", "manual QA guide"],
+    ["docs/qa-checklist.md", "QA checklist"],
+    ["docs/release-checklist.md", "release checklist"],
+    ["build/icon.ico", "Windows icon"],
+    ["build/icon.png", "app icon"],
+  ];
+
+  for (const [relativePath, label] of requiredFiles) {
+    await assertFile(join(root, relativePath), label);
+  }
+
+  const result = {
+    version,
+    appId,
+    productName,
+    windowsZip: null,
+    linuxZip: null,
+    unpackedExe: null,
+    linuxExecutable: null,
+  };
+
+  if (platform === "win" || platform === "all") {
+    const winUnpacked = join(root, "release", "win-unpacked");
+    await assertDirectory(winUnpacked, "Windows unpacked folder");
+    const exe = join(winUnpacked, `${productName}.exe`);
+    await assertFile(exe, "Windows unpacked executable");
+    await assertPackagedResources(winUnpacked, "Windows unpacked");
+    const windowsZip = join(root, "release", `${productName} ${version} Windows x64.zip`);
+    await assertFile(windowsZip, "Windows zip");
+    result.unpackedExe = exe;
+    result.windowsZip = windowsZip;
+  }
+
+  if (platform === "linux" || platform === "all") {
+    const linuxUnpacked = join(root, "release", "linux-unpacked");
+    await assertDirectory(linuxUnpacked, "Linux unpacked folder");
+    const linuxExecutable = await assertLinuxExecutable(root, productName, packageJson.name);
+    await assertPackagedResources(linuxUnpacked, "Linux unpacked");
+    const linuxZip = join(root, "release", `${productName} ${version} Linux x64.zip`);
+    await assertFile(linuxZip, "Linux zip");
+    result.linuxExecutable = linuxExecutable;
+    result.linuxZip = linuxZip;
+  }
+
+  return result;
+}
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+if (isDirectRun) {
+  const args = process.argv.slice(2);
+  const platform = parsePlatform(args);
+  const rootArg = args.find((arg) => !arg.startsWith("--") && arg !== platform);
+  const root = rootArg ? resolve(rootArg) : process.cwd();
+  const result = await checkReleaseArtifacts(root, platform);
+  console.log(`release artifacts ok: ${result.productName} ${result.version} (${platform})`);
+  if (result.windowsZip) {
+    console.log(`windows zip: ${result.windowsZip}`);
+    console.log(`windows unpacked: ${result.unpackedExe}`);
+  }
+  if (result.linuxZip) {
+    console.log(`linux zip: ${result.linuxZip}`);
+    console.log(`linux executable: ${result.linuxExecutable}`);
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "suwol-audio-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main/main.js",
+  "license": "Apache-2.0",
+  "author": "Suwol Audio Reference contributors",
+  "description": "Local audio reference and asset manager.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:renderer": "vite --config vite.renderer.config.ts --host 127.0.0.1",
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "fixtures:audio": "node scripts/generate-test-audio-fixtures.mjs",
+    "fixtures:large": "node scripts/generate-large-audio-fixtures.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:release": "node scripts/check-release-artifacts.mjs",
+    "zip:win": "node scripts/zip-release.mjs win",
+    "zip:linux": "node scripts/zip-release.mjs linux",
+    "zip:portable": "node scripts/zip-release.mjs all",
+    "smoke:production-entry": "node scripts/smoke-production-entry.mjs",
+    "smoke:packaged-paths": "node scripts/smoke-packaged-paths.mjs",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "vite build --config vite.renderer.config.ts",
+    "build:main": "vite build --config vite.main.config.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "audit": "npm audit",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --win",
+    "dist:win:dir": "npm run build && electron-builder --win dir",
+    "dist:linux:dir": "npm run build && electron-builder --linux dir"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.7.2",
+    "vite": "^8.1.3",
+    "vitest": "^4.1.9"
+  },
+  "build": {
+    "appId": "work.suwol.audio-reference",
+    "productName": "Suwol Audio Reference",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "README.md",
+      "docs/**/*",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "build/icon.ico",
+      "build/icon.png"
+    ],
+    "icon": "build/icon.ico",
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "dir"
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "dir"
+      ],
+      "category": "Audio"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "menu.file": "File",
+  "menu.newLibrary": "New Library",
+  "menu.openLibrary": "Open Library",
+  "menu.import": "Import",
+  "menu.quit": "Quit",
+  "menu.view": "View",
+  "menu.reload": "Reload",
+  "menu.help": "Help",
+  "dialog.libraryCreate": "Select New Library Folder",
+  "dialog.libraryOpen": "Open Library Folder",
+  "dialog.importFiles": "Import Audio/Reference Files",
+  "dialog.assetFilterName": "Suwol Audio Assets"
+}
