@@ -223,7 +223,7 @@ Phase 7 release-readiness notes:
 - Manual QA is documented in `docs/manual-qa.md`.
 - Windows unsigned distribution guidance is documented in `docs/windows-distribution.md`.
 - Linux zip distribution guidance is documented in `docs/linux-distribution.md`.
-- Release notes and known issues are documented in `docs/release-notes-0.1.0.md` and `docs/known-issues.md`.
+- Release notes and known issues are documented in `docs/release-notes-0.1.1.md` and `docs/known-issues.md`.
 - `check:release` validates the expected zip artifact, unpacked executable, release docs, notices, icons, and package metadata.
 
 GitHub release workflow notes:
@@ -293,23 +293,23 @@ The public release path is GitHub Releases on `suwol-suite/SuwolAudioReference`.
 Main branch pushes and pull requests create downloadable workflow artifacts. A version tag creates a GitHub Release and uploads the Windows/Linux zip files:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
-The release tag must match `package.json` exactly. For example, `package.json` version `0.1.0` must use tag `v0.1.0`. CI runs `npm run check:release-tag` and fails the release build if the tag, package version, and `docs/release-notes-X.Y.Z.md` do not line up.
+The release tag must match `package.json` exactly. For example, `package.json` version `0.1.1` must use tag `v0.1.1`. CI runs `npm run check:release-tag` and fails the release build if the tag, package version, and `docs/release-notes-X.Y.Z.md` do not line up.
 
 For the next release, update `package.json` version, add a matching `docs/release-notes-X.Y.Z.md`, verify the release checks, then tag as `vX.Y.Z`.
 
 Windows users:
 
-1. Download `Suwol Audio Reference 0.1.0 Windows x64.zip`.
+1. Download `Suwol Audio Reference 0.1.1 Windows x64.zip`.
 2. Extract it to a writable folder.
 3. Run `Suwol Audio Reference.exe` from the extracted `win-unpacked` folder.
 
 Linux users:
 
-1. Download `Suwol Audio Reference 0.1.0 Linux x64.zip`.
+1. Download `Suwol Audio Reference 0.1.1 Linux x64.zip`.
 2. Extract it to a writable folder.
 3. If needed, set executable permission:
 
@@ -322,7 +322,7 @@ The exact Linux executable name is verified by the release artifact checker and 
 
 ## Windows Distribution Notes
 
-- Windows zip artifact: `release\Suwol Audio Reference 0.1.0 Windows x64.zip`.
+- Windows zip artifact: `release\Suwol Audio Reference 0.1.1 Windows x64.zip`.
 - Unpacked executable: `release\win-unpacked\Suwol Audio Reference.exe`.
 - The current MVP is unsigned. Windows SmartScreen or browser download checks may warn that the publisher is unknown.
 - Do not ask testers to ignore security warnings blindly. Publish release notes, hashes, license, third-party notices, and the artifact source so testers can verify what they run.
@@ -333,7 +333,7 @@ The exact Linux executable name is verified by the release artifact checker and 
 - [Manual QA guide](./docs/manual-qa.md)
 - [QA checklist](./docs/qa-checklist.md)
 - [Release checklist](./docs/release-checklist.md)
-- [Release notes 0.1.0](./docs/release-notes-0.1.0.md)
+- [Release notes 0.1.1](./docs/release-notes-0.1.1.md)
 - [Known issues](./docs/known-issues.md)
 - [Windows distribution guide](./docs/windows-distribution.md)
 - [Linux distribution guide](./docs/linux-distribution.md)

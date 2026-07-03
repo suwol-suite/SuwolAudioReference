@@ -13,7 +13,7 @@ This checklist is for preparing an MVP Windows release candidate. The MVP should
 - `package.json` version is correct.
 - `package.json` `productName`, `appId`, `description`, and `license` are correct.
 - `README.md` reflects the supported platform, formats, library layout, and backup method.
-- `docs/manual-qa.md`, `docs/release-notes-0.1.0.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
+- `docs/manual-qa.md`, `docs/release-notes-0.1.1.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
 - Generated icons exist under `assets/brand/` and `build/`.
@@ -91,7 +91,7 @@ Include:
 ## GitHub Release Tags
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
-- Release tags use the `vX.Y.Z` format, for example `v0.1.0`.
+- Release tags use the `vX.Y.Z` format, for example `v0.1.1`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
 - Tag pushes create a GitHub Release and upload Windows/Linux zip assets.
@@ -101,8 +101,8 @@ Include:
 Release command:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 ## Post-Release

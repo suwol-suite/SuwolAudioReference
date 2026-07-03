@@ -1,11 +1,14 @@
-import { access, readdir, stat } from "node:fs/promises";
+import { access, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = process.cwd();
+const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+const productName = packageJson.build?.productName ?? "Suwol Audio Reference";
+const version = packageJson.version;
 const unpacked = join(root, "release", "win-unpacked");
-const exe = join(unpacked, "Suwol Audio Reference.exe");
+const exe = join(unpacked, `${productName}.exe`);
 const resources = join(unpacked, "resources");
-const windowsZip = join(root, "release", "Suwol Audio Reference 0.1.0 Windows x64.zip");
+const windowsZip = join(root, "release", `${productName} ${version} Windows x64.zip`);
 
 await access(exe);
 await access(resources);

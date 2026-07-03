@@ -1,10 +1,10 @@
 # Windows Distribution Guide
 
-This guide describes how to distribute Suwol Audio Reference 0.1.0 on Windows before a code-signing certificate is available. The 0.1.0 release workflow is zip-first.
+This guide describes how to distribute Suwol Audio Reference 0.1.1 on Windows before a code-signing certificate is available. The 0.1.1 release workflow is zip-first.
 
 ## Current Artifacts
 
-- Windows zip: `release\Suwol Audio Reference 0.1.0 Windows x64.zip`
+- Windows zip: `release\Suwol Audio Reference 0.1.1 Windows x64.zip`
 - Unpacked app: `release\win-unpacked\Suwol Audio Reference.exe`
 
 Generate the unpacked Windows app with:
@@ -29,11 +29,11 @@ npm.cmd run check:release -- --platform win
 
 Users download the Windows zip from GitHub Releases, extract it to a writable folder, and run `Suwol Audio Reference.exe` from the extracted `win-unpacked` folder.
 
-An installer is not the primary 0.1.0 release artifact. The GitHub Actions release workflow uploads zip files only.
+An installer is not the primary 0.1.1 release artifact. The GitHub Actions release workflow uploads zip files only.
 
 ## Unsigned Build Notice
 
-The current 0.1.0 build is not code signed. Windows SmartScreen, Microsoft Defender, or browser download checks may warn that the publisher is unknown.
+The current 0.1.1 build is not code signed. Windows SmartScreen, Microsoft Defender, or browser download checks may warn that the publisher is unknown.
 
 Do not tell users to ignore security warnings blindly. Instead:
 
@@ -57,10 +57,10 @@ The app does not add an app-managed ffmpeg executable or GPL-family runtime pack
 
 Keep a release folder outside the repository with:
 
-- `Suwol Audio Reference 0.1.0 Windows x64.zip`
-- `Suwol Audio Reference 0.1.0 Linux x64.zip`
+- `Suwol Audio Reference 0.1.1 Windows x64.zip`
+- `Suwol Audio Reference 0.1.1 Linux x64.zip`
 - SHA-256 hash text file
-- `docs/release-notes-0.1.0.md`
+- `docs/release-notes-0.1.1.md`
 - `docs/known-issues.md`
 - `docs/windows-distribution.md`
 - `docs/linux-distribution.md`

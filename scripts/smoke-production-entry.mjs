@@ -62,7 +62,7 @@ if (!rendererScriptPath) {
   throw new Error("Renderer index does not reference a JS bundle");
 }
 const rendererBundle = await readFile(join(root, "dist", "renderer", rendererScriptPath.replace(/^\.\//, "")), "utf8");
-for (const needle of ["Similar Sounds", "Open Log Folder", "The screen could not be rendered", "0.1.0"]) {
+for (const needle of ["Similar Sounds", "Open Log Folder", "The screen could not be rendered", packageJson.version]) {
   if (!rendererBundle.includes(needle)) {
     throw new Error(`Renderer bundle does not contain expected i18n marker: ${needle}`);
   }

@@ -1,6 +1,6 @@
 # Known Issues
 
-This document lists known limitations and release notes for Suwol Audio Reference 0.1.0. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
+This document lists known limitations and release notes for Suwol Audio Reference 0.1.1. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
 
 ## Unsigned Windows App Warning
 

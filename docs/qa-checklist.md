@@ -236,7 +236,7 @@ Do not commit generated fixture audio.
 - Launch `release\win-unpacked\Suwol Audio Reference.exe`.
 - Launch the same executable a second time and confirm the existing window is focused or restored instead of leaving two main windows open.
 - Confirm the app icon and window title are correct.
-- Open Settings > About and confirm version `0.1.0`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
+- Open Settings > About and confirm version `0.1.1`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
 - Create or open a library.
 - Import the fixture set.
 - Play one imported audio file.
@@ -247,5 +247,5 @@ Do not commit generated fixture audio.
 - Open settings and run diagnostics.
 - Close and reopen the packaged app.
 - Confirm the same library can be reopened and browsed.
-- Extract `release\Suwol Audio Reference 0.1.0 Windows x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
+- Extract `release\Suwol Audio Reference 0.1.1 Windows x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
 - Download the GitHub Actions Linux artifact or GitHub Release Linux zip, extract it on Linux, set executable permission if needed, and run the packaged executable.
