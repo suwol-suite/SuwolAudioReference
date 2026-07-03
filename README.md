@@ -55,7 +55,7 @@ This repository is preparing a Windows MVP release. The current build includes:
 
 - Primary target: Windows 10/11 x64.
 - Secondary CI package target: Linux x64 zip.
-- Development target: Node.js and npm on Windows PowerShell.
+- Development target: Node.js 24+ and npm 10+ on Windows PowerShell.
 - macOS builds are not release targets for this MVP.
 
 ## Supported Audio Inputs
@@ -107,6 +107,8 @@ Install dependencies:
 ```bash
 npm.cmd install
 ```
+
+Node 24+ is required because the local SQLite layer uses `node:sqlite`.
 
 Run the app in development:
 
