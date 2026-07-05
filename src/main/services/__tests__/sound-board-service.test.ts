@@ -15,6 +15,9 @@ import { SoundBoardExportService } from "../sound-board-export-service";
 import { SoundBoardValidationService } from "../sound-board-validation-service";
 import { SoundCandidateService } from "../sound-candidate-service";
 import { SoundChecklistService } from "../sound-checklist-service";
+import { SoundPackChangelogService } from "../sound-pack-changelog-service";
+import { SoundPackDiffService } from "../sound-pack-diff-service";
+import { SoundPackSnapshotService } from "../sound-pack-snapshot-service";
 import { SoundRequestExportService } from "../sound-request-export-service";
 import { SoundStyleGuideService } from "../sound-style-guide-service";
 import { SoundUsageBulkImportService } from "../sound-usage-bulk-import-service";
@@ -441,6 +444,73 @@ describe("sound board services", () => {
     expect(services.exportCenterService.deleteHistory(history[0]!.id).success).toBe(1);
   });
 
+  it("creates sound pack snapshots, diffs current changes, exports changelogs, and previews rollback safely", async () => {
+    const services = await createServices();
+    const assets = await importTwoAssets(services);
+    const project = services.projectService.createProject({ name: "Snapshot Project", engineType: "unity" });
+    const click = await services.usageService.createItem({
+      projectId: project.id,
+      key: "ui.click",
+      displayName: "Click",
+      category: "ui",
+      required: true,
+    });
+    const first = await services.candidateService.addCandidate({ usageItemId: click.id, assetId: assets[0]!.id, selected: true });
+    await services.candidateService.updateCandidate(first.id, { approved: true });
+    await saveRights(services, assets[0]!.id, { licenseName: "CC0", commercialUseStatus: "allowed", creditRequired: "no" });
+
+    const snapshot = await services.snapshotService.create({
+      projectId: project.id,
+      name: "Baseline",
+      freeze: true,
+    });
+    const baselineProject = await services.snapshotService.setBaseline(snapshot.id);
+    const second = await services.candidateService.addCandidate({ usageItemId: click.id, assetId: assets[1]!.id, selected: true });
+    await services.candidateService.updateCandidate(second.id, { approved: true });
+
+    const diff = await services.diffService.compare({ projectId: project.id, fromSnapshotId: snapshot.id, compareToCurrent: true });
+    const changelog = await services.changelogService.preview({ projectId: project.id, fromSnapshotId: snapshot.id, compareToCurrent: true });
+    const centerChangelog = await services.exportCenterService.preview({
+      target: "sound_pack_changelog_markdown",
+      source: { type: "gameProject", projectId: project.id, name: project.name },
+      fromSnapshotId: snapshot.id,
+      compareToCurrent: true,
+    });
+    const outputRoot = join(services.rootPath, "snapshot-export");
+    const snapshotExport = await services.exportCenterService.run({
+      target: "sound_pack_snapshot_json",
+      source: { type: "gameProject", projectId: project.id, name: project.name },
+      snapshotId: snapshot.id,
+    }, outputRoot);
+    const changelogExport = await services.exportCenterService.run({
+      target: "sound_pack_changelog_json",
+      source: { type: "gameProject", projectId: project.id, name: project.name },
+      fromSnapshotId: snapshot.id,
+      compareToCurrent: true,
+    }, outputRoot);
+    const rollbackPreview = await services.snapshotService.rollbackPreview(snapshot.id);
+    const rollbackResult = await services.snapshotService.rollbackApply({ snapshotId: snapshot.id, confirmed: true });
+    const restoredCandidates = await services.candidateService.listCandidates(click.id);
+
+    expect(snapshot.frozen).toBe(true);
+    expect(snapshot.itemCount).toBe(1);
+    expect(snapshot.selectedCount).toBe(1);
+    expect(baselineProject.baselineSnapshotId).toBe(snapshot.id);
+    expect(diff.summary.selectionChanges).toBeGreaterThan(0);
+    expect(changelog.previewText).toContain("Sound Pack Changelog");
+    expect(changelog.previewText).toContain("ui.click");
+    expect(centerChangelog.plannedFiles[0]?.path).toContain("sound-pack-changelog.md");
+    expect(snapshotExport.ok).toBe(true);
+    expect(snapshotExport.files[0]).toContain("sound-pack-snapshot.json");
+    expect(await readFile(snapshotExport.files[0]!, "utf8")).toContain("\"key\": \"ui.click\"");
+    expect(changelogExport.ok).toBe(true);
+    expect(changelogExport.files[0]).toContain("sound-pack-changelog.json");
+    expect(rollbackPreview.canApply).toBe(true);
+    expect(rollbackResult.updatedUsageItems).toBeGreaterThan(0);
+    expect(restoredCandidates.find((candidate) => candidate.assetId === assets[0]!.id)).toMatchObject({ selected: true, approved: true });
+    expect(restoredCandidates.find((candidate) => candidate.assetId === assets[1]!.id)).toMatchObject({ selected: false, approved: false });
+  });
+
   it("manages workflow notes, candidate reviews, style guides, checklists, and sound request exports", async () => {
     const services = await createServices();
     const assets = await importTwoAssets(services);
@@ -677,6 +747,15 @@ async function createServices() {
   const styleGuideService = new SoundStyleGuideService(libraryService);
   const checklistService = new SoundChecklistService(libraryService);
   const soundRequestExportService = new SoundRequestExportService(libraryService, assetService, candidateService);
+  const snapshotService = new SoundPackSnapshotService(
+    libraryService,
+    assetService,
+    candidateService,
+    validationService,
+    projectService,
+  );
+  const diffService = new SoundPackDiffService(snapshotService);
+  const changelogService = new SoundPackChangelogService(diffService);
   const exportCenterService = new ExportCenterService(
     libraryService,
     assetService,
@@ -685,6 +764,8 @@ async function createServices() {
     projectService,
     validationService,
     soundRequestExportService,
+    snapshotService,
+    changelogService,
   );
   return {
     rootPath,
@@ -704,6 +785,9 @@ async function createServices() {
     styleGuideService,
     checklistService,
     soundRequestExportService,
+    snapshotService,
+    diffService,
+    changelogService,
     exportCenterService,
   };
 }

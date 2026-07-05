@@ -21,7 +21,11 @@ export type ExportTargetType =
   | "sound_request_csv"
   | "sound_request_json"
   | "project_style_guide_markdown"
-  | "project_checklist_markdown";
+  | "project_checklist_markdown"
+  | "sound_pack_snapshot_json"
+  | "sound_pack_changelog_markdown"
+  | "sound_pack_changelog_json"
+  | "sound_pack_changelog_csv";
 
 export type ExportPresetType =
   | "codex_instruction"
@@ -39,7 +43,11 @@ export type ExportPresetType =
   | "sound_request_csv"
   | "sound_request_json"
   | "project_style_guide_markdown"
-  | "project_checklist_markdown";
+  | "project_checklist_markdown"
+  | "sound_pack_snapshot_json"
+  | "sound_pack_changelog_markdown"
+  | "sound_pack_changelog_json"
+  | "sound_pack_changelog_csv";
 
 export type ExportSource =
   | { type: "selected"; assetIds: string[] }
@@ -133,6 +141,17 @@ export interface ExportOptions {
   includeReviewNotes?: boolean;
   includeCandidateReviewNotes?: boolean;
   includeDecisionNotes?: boolean;
+  snapshotId?: string;
+  fromSnapshotId?: string;
+  toSnapshotId?: string;
+  baselineSnapshotId?: string;
+  compareToCurrent?: boolean;
+  createSnapshotBeforeExport?: boolean;
+  useSnapshotAsExportSource?: boolean;
+  includeDiffSummary?: boolean;
+  includeRightsChanges?: boolean;
+  includeRiskChanges?: boolean;
+  includeCandidateChanges?: boolean;
 }
 
 export interface ExportValidationIssue {
@@ -150,6 +169,8 @@ export interface ExportValidationIssue {
     | "EXPORT_TARGET_EXISTS"
     | "EXPORT_TYPE_SOURCE_MISMATCH"
     | "PROJECT_NOT_FOUND"
+    | "SNAPSHOT_NOT_FOUND"
+    | "SNAPSHOT_COMPARE_FAILED"
     | "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
   message: string;
   assetId?: string;
@@ -228,12 +249,16 @@ export interface ExportHistoryRecord {
   errorCode: string | null;
   errorMessage: string | null;
   options: Partial<ExportOptions>;
+  snapshotId?: string | null;
+  baselineSnapshotId?: string | null;
+  diffSummary?: Record<string, unknown> | null;
 }
 
 export interface ExportHistoryListQuery {
   limit?: number;
   target?: ExportTargetType;
   projectId?: string;
+  snapshotId?: string;
 }
 
 export interface ExportAssetContext {

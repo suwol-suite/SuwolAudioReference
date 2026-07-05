@@ -59,6 +59,10 @@ const TARGET_OPTIONS: ExportTargetType[] = [
   "sound_request_json",
   "project_style_guide_markdown",
   "project_checklist_markdown",
+  "sound_pack_snapshot_json",
+  "sound_pack_changelog_markdown",
+  "sound_pack_changelog_json",
+  "sound_pack_changelog_csv",
 ];
 
 const PROJECT_TARGET_OPTIONS = new Set<ExportTargetType>([
@@ -71,6 +75,10 @@ const PROJECT_TARGET_OPTIONS = new Set<ExportTargetType>([
   "sound_request_json",
   "project_style_guide_markdown",
   "project_checklist_markdown",
+  "sound_pack_snapshot_json",
+  "sound_pack_changelog_markdown",
+  "sound_pack_changelog_json",
+  "sound_pack_changelog_csv",
 ]);
 
 const ENGINE_OPTIONS: ProjectSoundPackEngineProfile[] = ["generic", "unity", "unreal", "monogame"];
@@ -147,6 +155,12 @@ export function ExportCenterDialog({
     "sound_request_json",
     "project_style_guide_markdown",
     "project_checklist_markdown",
+  ].includes(options.target);
+  const isSnapshotTarget = options.target === "sound_pack_snapshot_json";
+  const isSoundPackChangelogTarget = [
+    "sound_pack_changelog_markdown",
+    "sound_pack_changelog_json",
+    "sound_pack_changelog_csv",
   ].includes(options.target);
   const needsProjectEngineOptions = ["project_sound_pack", "project_manifest", "project_codex_instruction"].includes(options.target);
   const isManifestTarget = !isProjectTarget && !isCodexTarget && options.target !== "sound_pack_folder" && options.target !== "sound_pack_metadata" && options.target !== "csv_report";
@@ -240,6 +254,32 @@ export function ExportCenterDialog({
         const requestPreview = await window.suwolAudio.soundRequest.preview(toSoundRequestExportOptions(options));
         setProjectSoundPackPreview(null);
         setPreviewText(requestPreview.previewText ?? "");
+      } else if (isSoundPackChangelogTarget && options.source.type === "gameProject") {
+        const fromSnapshotId = options.fromSnapshotId ?? options.snapshotId ?? options.baselineSnapshotId ?? "";
+        if (!fromSnapshotId) {
+          setProjectSoundPackPreview(null);
+          setPreviewText("");
+          return;
+        }
+        const changelogPreview = await window.suwolAudio.soundSnapshots.changelogPreview({
+          projectId: options.source.projectId,
+          fromSnapshotId,
+          toSnapshotId: options.toSnapshotId,
+          compareToCurrent: options.compareToCurrent ?? true,
+          format: soundPackChangelogFormatForTarget(options.target),
+          includeDiffSummary: options.includeDiffSummary,
+          includeCandidateChanges: options.includeCandidateChanges,
+          includeRightsChanges: options.includeRightsChanges,
+          includeRiskChanges: options.includeRiskChanges,
+        });
+        setProjectSoundPackPreview(null);
+        setPreviewText(changelogPreview.previewText);
+      } else if (isSnapshotTarget && options.source.type === "gameProject") {
+        const snapshot = options.snapshotId
+          ? await window.suwolAudio.soundSnapshots.get(options.snapshotId)
+          : null;
+        setProjectSoundPackPreview(null);
+        setPreviewText(snapshot ? `${JSON.stringify(snapshot.payload, null, 2)}\n` : "");
       } else if (isProjectTarget && options.source.type === "gameProject") {
         const boardPreview = await window.suwolAudio.soundBoardExport.projectPreview(toSoundBoardExportOptions(options));
         setProjectSoundPackPreview(null);
@@ -573,6 +613,10 @@ export function ExportCenterDialog({
                     <input type="checkbox" checked={options.includeDecisionNotes ?? false} onChange={(event) => updateOptions({ includeDecisionNotes: event.target.checked })} />
                     {t("export.includeDecisionNotes" as MessageKey)}
                   </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.createSnapshotBeforeExport ?? false} onChange={(event) => updateOptions({ createSnapshotBeforeExport: event.target.checked })} />
+                    {t("export.createSnapshotBeforeExport" as MessageKey)}
+                  </label>
                   {options.target === "project_sound_pack" ? (
                     <>
                       <label className="settings-toggle">
@@ -675,6 +719,13 @@ function createDefaultOptions(selectedAssetIds: string[], currentQuery: AssetLis
     includeReviewNotes: false,
     includeCandidateReviewNotes: false,
     includeDecisionNotes: false,
+    compareToCurrent: true,
+    createSnapshotBeforeExport: false,
+    useSnapshotAsExportSource: false,
+    includeDiffSummary: true,
+    includeRightsChanges: true,
+    includeRiskChanges: true,
+    includeCandidateChanges: true,
   };
 }
 
@@ -748,6 +799,16 @@ function soundRequestDocumentForTarget(target: ExportTargetType): SoundRequestEx
     return "checklist";
   }
   return "request";
+}
+
+function soundPackChangelogFormatForTarget(target: ExportTargetType): "markdown" | "json" | "csv" {
+  if (target === "sound_pack_changelog_json") {
+    return "json";
+  }
+  if (target === "sound_pack_changelog_csv") {
+    return "csv";
+  }
+  return "markdown";
 }
 
 function toSoundBoardExportOptions(options: ExportOptions): SoundBoardExportOptions & { outputPath?: string } {

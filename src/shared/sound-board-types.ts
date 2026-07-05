@@ -59,6 +59,20 @@ export type SoundWorkTodoColumn = "missing" | "need_candidates" | "reviewing" | 
 export type SoundWorkTodoSort = "priority" | "status" | "riskCount" | "category" | "updatedWorkflow" | "key";
 export type SoundRequestExportFormat = "markdown" | "csv" | "json";
 export type SoundRequestDocumentType = "request" | "style_guide" | "checklist";
+export type SoundPackSnapshotStatus = "draft" | "approved" | "exported" | "archived";
+export type SoundPackDiffSeverity = "info" | "warning" | "breaking";
+export type SoundPackDiffChangeType =
+  | "usage_added"
+  | "usage_removed"
+  | "usage_changed"
+  | "candidate_added"
+  | "candidate_removed"
+  | "selection_changed"
+  | "approval_changed"
+  | "asset_changed"
+  | "rights_changed"
+  | "risk_changed";
+export type SoundPackChangelogFormat = "markdown" | "json" | "csv";
 
 export interface GameProjectRecord {
   id: string;
@@ -68,6 +82,7 @@ export interface GameProjectRecord {
   engineType: GameEngineType;
   rootNamespace: string;
   defaultExportFormat: ProjectDefaultExportFormat;
+  baselineSnapshotId: string | null;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
@@ -87,6 +102,7 @@ export interface GameProjectUpdateInput {
   engineType?: GameEngineType;
   rootNamespace?: string;
   defaultExportFormat?: ProjectDefaultExportFormat;
+  baselineSnapshotId?: string | null;
 }
 
 export interface SoundUsageItemRecord {
@@ -645,5 +661,182 @@ export interface SoundRequestExportResult {
   outputPath?: string;
   files: string[];
   summary: BatchResult;
+  error?: { code: string; message: string };
+}
+
+export interface SoundPackSnapshotValidationSummary {
+  ok: boolean;
+  errorCount: number;
+  warningCount: number;
+  riskCount: number;
+}
+
+export interface SoundPackSnapshotItemRecord {
+  id: string;
+  snapshotId: string;
+  usageItemId: string;
+  usageKey: string;
+  displayName: string;
+  category: SoundUsageCategory;
+  status: SoundUsageStatus;
+  priority: SoundUsagePriority;
+  required: boolean;
+  loopRequired: boolean;
+  variantsAllowed: boolean;
+  selectedAssetIds: string[];
+  approvedAssetIds: string[];
+  candidateAssetIds: string[];
+  snapshotJson: SoundPackSnapshotItemPayload;
+  createdAt: string;
+}
+
+export interface SoundPackSnapshotItemPayload {
+  usageItem: SoundUsageItemRecord;
+  candidates: SoundUsageCandidateRecord[];
+  rightsByAssetId: Record<string, SoundPackSnapshotAssetRights>;
+}
+
+export interface SoundPackSnapshotAssetRights {
+  licenseName: string;
+  commercialUseStatus: string;
+  creditRequired: string;
+  attributionText: string;
+  sourceUrl: string;
+}
+
+export interface SoundPackSnapshotPayload {
+  version: 1;
+  project: GameProjectRecord;
+  summary: SoundBoardSummary;
+  validation: SoundBoardValidationResult;
+  items: SoundPackSnapshotItemPayload[];
+  exportOptions?: Record<string, unknown>;
+}
+
+export interface SoundPackSnapshotRecord {
+  id: string;
+  libraryId: string;
+  projectId: string;
+  name: string;
+  description: string;
+  status: SoundPackSnapshotStatus;
+  frozen: boolean;
+  itemCount: number;
+  selectedCount: number;
+  approvedCount: number;
+  missingCount: number;
+  warningCount: number;
+  errorCount: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  exportHistoryId: string | null;
+  payload: SoundPackSnapshotPayload;
+}
+
+export interface SoundPackSnapshotDetail extends SoundPackSnapshotRecord {
+  items: SoundPackSnapshotItemRecord[];
+}
+
+export interface SoundPackSnapshotInput {
+  projectId: string;
+  name?: string;
+  description?: string;
+  status?: SoundPackSnapshotStatus;
+  freeze?: boolean;
+  exportHistoryId?: string | null;
+  exportOptions?: Record<string, unknown>;
+}
+
+export interface SoundPackDiffChange {
+  id: string;
+  type: SoundPackDiffChangeType;
+  severity: SoundPackDiffSeverity;
+  usageKey: string;
+  usageItemId?: string;
+  assetId?: string;
+  candidateId?: string;
+  field?: string;
+  before?: unknown;
+  after?: unknown;
+  message: string;
+}
+
+export interface SoundPackDiffSummary {
+  addedUsageItems: number;
+  removedUsageItems: number;
+  changedUsageItems: number;
+  selectionChanges: number;
+  approvalChanges: number;
+  candidateChanges: number;
+  assetChanges: number;
+  rightsChanges: number;
+  riskChanges: number;
+  breakingChanges: number;
+  warnings: number;
+}
+
+export interface SoundPackCompareInput {
+  projectId?: string;
+  fromSnapshotId: string;
+  toSnapshotId?: string;
+  compareToCurrent?: boolean;
+}
+
+export interface SoundPackDiffResult {
+  projectId: string;
+  fromSnapshotId: string;
+  toSnapshotId: string | null;
+  toCurrent: boolean;
+  fromName: string;
+  toName: string;
+  summary: SoundPackDiffSummary;
+  changes: SoundPackDiffChange[];
+}
+
+export interface SoundPackRollbackPreview {
+  snapshotId: string;
+  projectId: string;
+  snapshotName: string;
+  canApply: boolean;
+  selectedChanges: number;
+  approvedChanges: number;
+  skippedMissingUsageItems: number;
+  skippedMissingCandidates: number;
+  warnings: string[];
+  changes: SoundPackDiffChange[];
+}
+
+export interface SoundPackRollbackApplyInput {
+  snapshotId: string;
+  confirmed?: boolean;
+}
+
+export interface SoundPackRollbackResult extends SoundPackRollbackPreview {
+  applied: boolean;
+  updatedUsageItems: number;
+  updatedCandidates: number;
+}
+
+export interface SoundPackChangelogOptions extends SoundPackCompareInput {
+  format?: SoundPackChangelogFormat;
+  includeDiffSummary?: boolean;
+  includeCandidateChanges?: boolean;
+  includeRightsChanges?: boolean;
+  includeRiskChanges?: boolean;
+}
+
+export interface SoundPackChangelogPreview {
+  projectId: string;
+  format: SoundPackChangelogFormat;
+  fileName: string;
+  diff: SoundPackDiffResult;
+  previewText: string;
+}
+
+export interface SoundPackChangelogResult extends SoundPackChangelogPreview {
+  ok: boolean;
+  outputPath?: string;
+  files: string[];
   error?: { code: string; message: string };
 }

@@ -1355,8 +1355,10 @@ select {
 }
 
 .sound-panel-header,
+.section-heading-row,
 .sound-board-toolbar,
 .sound-summary-row,
+.snapshot-summary,
 .template-row,
 .sound-export-actions,
 .candidate-actions,
@@ -1369,6 +1371,23 @@ select {
 
 .sound-panel-header {
   justify-content: space-between;
+}
+
+.section-heading-row {
+  justify-content: space-between;
+}
+
+.section-heading-row > div {
+  min-width: 0;
+}
+
+.snapshot-summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .sound-panel-header h3,

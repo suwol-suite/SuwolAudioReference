@@ -190,6 +190,8 @@ Do not commit generated fixture audio.
 - Preview and export Project Sound Pack from Export Center.
 - Preview and export Project Manifest from Export Center for Generic, Unity, Unreal, and MonoGame profiles.
 - Preview and export Project Missing Report and Project Codex Instruction from Export Center.
+- Preview and export Sound Pack Snapshot JSON from a game project source.
+- Preview and export Sound Pack Changelog Markdown, JSON, and CSV from a baseline snapshot to the current board.
 - Confirm project export presets can be saved, applied, and deleted while built-in project presets are not written to the preset table.
 - Confirm successful and failed Export Center runs appear in export history and can be deleted without deleting output files.
 - Export files with Korean filenames.
@@ -256,6 +258,8 @@ Do not commit generated fixture audio.
 - Export Project Style Guide Markdown and Project Checklist Markdown from Export Center.
 - Confirm Project Sound Pack and Project Codex Instruction include style/checklist/work/review/decision notes only when the related include options are enabled.
 - Confirm project exports do not modify Unity, Unreal, MonoGame, or other game project files.
+- Create a Sound Pack Snapshot, freeze it, set it as baseline, compare it against current, and confirm the diff shows selection/approval changes.
+- Run rollback preview before applying and confirm rollback only restores existing candidate selected/approved flags.
 - Create or import hundreds of usage rows and confirm search, filters, sort changes, item selection, detail editing, and candidate list rendering remain responsive.
 
 ## Project Sound Pack Export Center Flow
@@ -277,6 +281,18 @@ Do not commit generated fixture audio.
 - Confirm `README.md`, `credits.md`, `missing-sounds.md`, `validation-report.md`, and metadata CSV files are created.
 - Confirm output folder open action opens the generated sound pack folder.
 - Confirm original source audio files are unchanged after export.
+
+## Sound Pack Snapshot / Diff / Rollback
+
+- Create a Sound Pack Snapshot from Sound Usage Board and confirm it appears in the snapshot list.
+- Freeze the snapshot and confirm it cannot be deleted from the normal snapshot action.
+- Set the frozen snapshot as the project baseline and confirm the baseline label persists after closing/reopening the board.
+- Change selected/approved candidates on the current board, then compare the baseline snapshot against current and confirm selection/approval changes are shown.
+- Open Sound Pack Changelog from the snapshot panel and confirm Export Center is prefilled with the game project source and snapshot target.
+- Export snapshot JSON and changelog Markdown/JSON/CSV, then confirm absolute local source paths are not included by default.
+- Run rollback preview and confirm it lists changes and skipped missing candidates before any DB state changes.
+- Apply rollback only after confirmation and confirm existing candidate selected/approved flags return to the snapshot state.
+- Confirm rollback does not create/delete usage rows, create/delete assets, move source audio, or modify engine project files.
 
 ## Phase 5A UI Polish
 

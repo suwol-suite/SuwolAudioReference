@@ -25,6 +25,10 @@ import type {
   GameProjectInput,
   GameProjectUpdateInput,
   SoundBoardExportOptions,
+  SoundPackChangelogOptions,
+  SoundPackCompareInput,
+  SoundPackRollbackApplyInput,
+  SoundPackSnapshotInput,
   SoundCandidateReviewInput,
   SoundProjectChecklistItemInput,
   SoundProjectChecklistItemUpdateInput,
@@ -411,6 +415,43 @@ export function registerIpcHandlers(
   ipcMain.handle("soundRequest:export", async (_event, input: SoundRequestExportOptions & { outputPath?: string }) => {
     const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
     return outputPath ? services.soundRequestExportService.export(input, outputPath) : null;
+  });
+  ipcMain.handle("soundSnapshots:list", (_event, projectId: string) =>
+    services.soundPackSnapshotService.list(projectId),
+  );
+  ipcMain.handle("soundSnapshots:create", (_event, input: SoundPackSnapshotInput) =>
+    services.soundPackSnapshotService.create(input),
+  );
+  ipcMain.handle("soundSnapshots:get", (_event, snapshotId: string) =>
+    services.soundPackSnapshotService.get(snapshotId),
+  );
+  ipcMain.handle("soundSnapshots:delete", (_event, snapshotId: string) =>
+    services.soundPackSnapshotService.delete(snapshotId),
+  );
+  ipcMain.handle("soundSnapshots:freeze", (_event, snapshotId: string) =>
+    services.soundPackSnapshotService.freeze(snapshotId),
+  );
+  ipcMain.handle("soundSnapshots:setBaseline", (_event, snapshotId: string) =>
+    services.soundPackSnapshotService.setBaseline(snapshotId),
+  );
+  ipcMain.handle("soundSnapshots:compare", (_event, input: SoundPackCompareInput) =>
+    services.soundPackDiffService.compare(input),
+  );
+  ipcMain.handle("soundSnapshots:compareCurrent", (_event, input: { projectId: string; fromSnapshotId: string }) =>
+    services.soundPackDiffService.compare({ projectId: input.projectId, fromSnapshotId: input.fromSnapshotId, compareToCurrent: true }),
+  );
+  ipcMain.handle("soundSnapshots:rollbackPreview", (_event, snapshotId: string) =>
+    services.soundPackSnapshotService.rollbackPreview(snapshotId),
+  );
+  ipcMain.handle("soundSnapshots:rollbackApply", (_event, input: SoundPackRollbackApplyInput) =>
+    services.soundPackSnapshotService.rollbackApply(input),
+  );
+  ipcMain.handle("soundSnapshots:changelogPreview", (_event, input: SoundPackChangelogOptions) =>
+    services.soundPackChangelogService.preview(input),
+  );
+  ipcMain.handle("soundSnapshots:changelogExport", async (_event, input: SoundPackChangelogOptions & { outputPath?: string }) => {
+    const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
+    return outputPath ? services.soundPackChangelogService.export(input, outputPath) : null;
   });
   ipcMain.handle("export:projectPreview", (_event, input: SoundBoardExportOptions & { outputPath?: string }) =>
     services.soundBoardExportService.preview(input, input.outputPath),

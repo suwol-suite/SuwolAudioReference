@@ -19,6 +19,9 @@ import { SoundBoardExportService } from "./sound-board-export-service";
 import { SoundBoardValidationService } from "./sound-board-validation-service";
 import { SoundCandidateService } from "./sound-candidate-service";
 import { SoundChecklistService } from "./sound-checklist-service";
+import { SoundPackChangelogService } from "./sound-pack-changelog-service";
+import { SoundPackDiffService } from "./sound-pack-diff-service";
+import { SoundPackSnapshotService } from "./sound-pack-snapshot-service";
 import { SoundRequestExportService } from "./sound-request-export-service";
 import { SoundStyleGuideService } from "./sound-style-guide-service";
 import { SoundUsageBulkImportService } from "./sound-usage-bulk-import-service";
@@ -57,6 +60,9 @@ export interface AppServices {
   soundStyleGuideService: SoundStyleGuideService;
   soundChecklistService: SoundChecklistService;
   soundRequestExportService: SoundRequestExportService;
+  soundPackSnapshotService: SoundPackSnapshotService;
+  soundPackDiffService: SoundPackDiffService;
+  soundPackChangelogService: SoundPackChangelogService;
 }
 
 export function createAppServices(userDataPath: string): AppServices {
@@ -88,6 +94,15 @@ export function createAppServices(userDataPath: string): AppServices {
   const soundStyleGuideService = new SoundStyleGuideService(libraryService);
   const soundChecklistService = new SoundChecklistService(libraryService);
   const soundRequestExportService = new SoundRequestExportService(libraryService, assetService, soundCandidateService);
+  const soundPackSnapshotService = new SoundPackSnapshotService(
+    libraryService,
+    assetService,
+    soundCandidateService,
+    soundBoardValidationService,
+    gameProjectService,
+  );
+  const soundPackDiffService = new SoundPackDiffService(soundPackSnapshotService);
+  const soundPackChangelogService = new SoundPackChangelogService(soundPackDiffService);
   const exportCenterService = new ExportCenterService(
     libraryService,
     assetService,
@@ -96,6 +111,8 @@ export function createAppServices(userDataPath: string): AppServices {
     gameProjectService,
     soundBoardValidationService,
     soundRequestExportService,
+    soundPackSnapshotService,
+    soundPackChangelogService,
   );
 
   return {
@@ -127,5 +144,8 @@ export function createAppServices(userDataPath: string): AppServices {
     soundStyleGuideService,
     soundChecklistService,
     soundRequestExportService,
+    soundPackSnapshotService,
+    soundPackDiffService,
+    soundPackChangelogService,
   };
 }

@@ -49,6 +49,7 @@ This repository is preparing a Windows MVP release. The current build includes:
 - Similar Sounds panel in the inspector with local DSP candidate scores, reason chips, duplicate markers, play, and A/B compare actions.
 - Game project sound usage board for required sound keys, candidates, selected assets, missing reports, and project-specific manifests.
 - Sound usage dashboard, bulk paste import, custom board templates, validation panel, status review actions, asset-to-usage links, and export readiness preview.
+- Sound pack snapshots, baseline diff/changelog export, and rollback preview/apply for selected/approved usage mappings.
 - WAV PCM analysis uses a local parser for supported PCM/float WAV files; unsupported codecs keep the existing metadata-only fallback.
 - Settings tabs for general, playback, library management, shortcuts, and about.
 - Windows packaging metadata and generated application icons.
@@ -313,6 +314,13 @@ Phase 12 sound workflow productivity notes:
 - Export Center project targets now include Sound Request Markdown/CSV/JSON, Project Style Guide Markdown, and Project Checklist Markdown.
 - Project Sound Pack and Project Codex Instruction options can include style guide, checklist, work notes, candidate review notes, and decision notes without changing original audio or game project files.
 - Workflow validation adds warnings for approved items without decision notes, selected items without review notes, open TODO work notes, empty style guide, incomplete checklist, and selected candidates without review/rating data.
+
+Phase 13 sound pack snapshot notes:
+
+- Sound Usage Board can create local Sound Pack Snapshots from the current usage board without copying, editing, moving, renaming, or transcoding audio.
+- Snapshots store usage rows, candidate links, selected/approved mappings, rights summaries, and validation state in SQLite so a project can compare against a known baseline.
+- A frozen snapshot can be marked as the project baseline, compared against the current board, and exported through Export Center as snapshot JSON or changelog Markdown/JSON/CSV.
+- Rollback is preview-first and only restores existing candidate selected/approved flags for matching usage keys and candidates. It does not create/delete assets, move source audio, or modify engine project files.
 
 ## Logs And Troubleshooting
 

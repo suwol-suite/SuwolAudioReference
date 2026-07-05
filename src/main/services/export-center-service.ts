@@ -26,6 +26,11 @@ import type {
   SoundBoardExportOptions,
   SoundBoardExportPreview,
   SoundBoardExportResult,
+  SoundPackChangelogFormat,
+  SoundPackChangelogOptions,
+  SoundPackChangelogPreview,
+  SoundPackChangelogResult,
+  SoundPackSnapshotDetail,
   SoundRequestExportOptions,
   SoundRequestExportPreview,
   SoundRequestExportResult,
@@ -44,6 +49,8 @@ import type { GameProjectService } from "./game-project-service";
 import type { ProjectSoundPackService } from "./project-sound-pack-service";
 import type { SoundBoardExportService } from "./sound-board-export-service";
 import type { SoundBoardValidationService } from "./sound-board-validation-service";
+import type { SoundPackChangelogService } from "./sound-pack-changelog-service";
+import type { SoundPackSnapshotService } from "./sound-pack-snapshot-service";
 import type { SoundRequestExportService } from "./sound-request-export-service";
 import { safeSoundPackFolderName, SoundPackExportService } from "./sound-pack-export-service";
 
@@ -85,6 +92,9 @@ interface ExportHistoryRow {
   error_code: string | null;
   error_message: string | null;
   options_json: string;
+  snapshot_id: string | null;
+  baseline_snapshot_id: string | null;
+  diff_summary_json: string | null;
 }
 
 interface PreparedExport {
@@ -131,6 +141,13 @@ const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   includeReviewNotes: false,
   includeCandidateReviewNotes: false,
   includeDecisionNotes: false,
+  compareToCurrent: true,
+  createSnapshotBeforeExport: false,
+  useSnapshotAsExportSource: false,
+  includeDiffSummary: true,
+  includeRightsChanges: true,
+  includeRiskChanges: true,
+  includeCandidateChanges: true,
 };
 
 const PROJECT_EXPORT_TARGETS = new Set<ExportTargetType>([
@@ -143,6 +160,10 @@ const PROJECT_EXPORT_TARGETS = new Set<ExportTargetType>([
   "sound_request_json",
   "project_style_guide_markdown",
   "project_checklist_markdown",
+  "sound_pack_snapshot_json",
+  "sound_pack_changelog_markdown",
+  "sound_pack_changelog_json",
+  "sound_pack_changelog_csv",
 ]);
 
 const BUILT_IN_PRESETS: ExportPresetRecord[] = [
@@ -262,6 +283,33 @@ const BUILT_IN_PRESETS: ExportPresetRecord[] = [
     updatedAt: "",
   },
   {
+    id: "built-in-sound-pack-snapshot",
+    libraryId: null,
+    name: "Sound Pack Snapshot JSON",
+    type: "sound_pack_snapshot_json",
+    config: { target: "sound_pack_snapshot_json", createSnapshotBeforeExport: false },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-sound-pack-changelog",
+    libraryId: null,
+    name: "Sound Pack Changelog Markdown",
+    type: "sound_pack_changelog_markdown",
+    config: {
+      target: "sound_pack_changelog_markdown",
+      compareToCurrent: true,
+      includeDiffSummary: true,
+      includeCandidateChanges: true,
+      includeRightsChanges: true,
+      includeRiskChanges: true,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
     id: "built-in-project-style-guide",
     libraryId: null,
     name: "Project Style Guide Markdown",
@@ -296,6 +344,8 @@ export class ExportCenterService {
     private readonly gameProjectService?: GameProjectService,
     private readonly soundBoardValidationService?: SoundBoardValidationService,
     private readonly soundRequestExportService?: SoundRequestExportService,
+    private readonly soundPackSnapshotService?: SoundPackSnapshotService,
+    private readonly soundPackChangelogService?: SoundPackChangelogService,
   ) {}
 
   async preview(input: Partial<ExportOptions>, outputDirectory?: string): Promise<ExportPreview> {
@@ -568,6 +618,10 @@ export class ExportCenterService {
       where.push("project_id = ?");
       params.push(query.projectId);
     }
+    if (query.snapshotId) {
+      where.push("snapshot_id = ?");
+      params.push(query.snapshotId);
+    }
     const rows = context.db.all<ExportHistoryRow>(
       `
       SELECT *
@@ -607,6 +661,14 @@ export class ExportCenterService {
         const dryRun = await this.requireProjectSoundPackService().preview(toProjectSoundPackOptions(options), outputDirectory);
         return mapProjectSoundPackPreview(options, dryRun);
       }
+      if (options.target === "sound_pack_snapshot_json") {
+        const snapshot = await this.resolveSnapshotForExport(options);
+        return mapSnapshotPreview(options, snapshot, outputDirectory);
+      }
+      if (isSoundPackChangelogTarget(options.target)) {
+        const requestPreview = await this.requireSoundPackChangelogService().preview(await this.toSoundPackChangelogOptions(options));
+        return mapChangelogPreview(options, requestPreview, outputDirectory);
+      }
       if (isSoundRequestTarget(options.target)) {
         const requestPreview = await this.requireSoundRequestExportService().preview(toSoundRequestExportOptions(options), outputDirectory);
         return mapSoundRequestPreview(options, requestPreview);
@@ -641,12 +703,27 @@ export class ExportCenterService {
       );
     }
     try {
+      const exportOptions = { ...options };
+      if (exportOptions.createSnapshotBeforeExport && exportOptions.source.type === "gameProject" && exportOptions.target !== "sound_pack_snapshot_json") {
+        const snapshot = await this.requireSoundPackSnapshotService().create({
+          projectId: exportOptions.source.projectId,
+          name: `${exportOptions.source.name ?? exportOptions.source.projectId} Export Snapshot`,
+          status: "exported",
+          freeze: true,
+          exportOptions: JSON.parse(JSON.stringify(exportOptions)) as Record<string, unknown>,
+        });
+        exportOptions.snapshotId = snapshot.id;
+      }
       const result = options.target === "project_sound_pack"
-        ? mapProjectSoundPackResult(await this.requireProjectSoundPackService().export(toProjectSoundPackOptions(options), outputDirectory))
-        : isSoundRequestTarget(options.target)
-          ? mapSoundRequestResult(await this.requireSoundRequestExportService().export(toSoundRequestExportOptions(options), outputDirectory))
-          : mapSoundBoardResult(await this.requireSoundBoardExportService().run(toSoundBoardExportOptions(options), outputDirectory));
-      return this.recordHistorySafe(options, sourceLabel, result);
+        ? mapProjectSoundPackResult(await this.requireProjectSoundPackService().export(toProjectSoundPackOptions(exportOptions), outputDirectory))
+        : options.target === "sound_pack_snapshot_json"
+          ? await this.runSnapshotExport(exportOptions, outputDirectory)
+        : isSoundPackChangelogTarget(options.target)
+            ? mapChangelogResult(await this.requireSoundPackChangelogService().export(await this.toSoundPackChangelogOptions(exportOptions), outputDirectory))
+            : isSoundRequestTarget(options.target)
+              ? mapSoundRequestResult(await this.requireSoundRequestExportService().export(toSoundRequestExportOptions(exportOptions), outputDirectory))
+              : mapSoundBoardResult(await this.requireSoundBoardExportService().run(toSoundBoardExportOptions(exportOptions), outputDirectory));
+      return this.recordHistorySafe(exportOptions, sourceLabel, result);
     } catch (error) {
       return this.recordHistorySafe(
         options,
@@ -677,6 +754,89 @@ export class ExportCenterService {
     return this.soundRequestExportService;
   }
 
+  private requireSoundPackSnapshotService(): SoundPackSnapshotService {
+    if (!this.soundPackSnapshotService) {
+      throw new Error("Sound pack snapshot service is not available.");
+    }
+    return this.soundPackSnapshotService;
+  }
+
+  private requireSoundPackChangelogService(): SoundPackChangelogService {
+    if (!this.soundPackChangelogService) {
+      throw new Error("Sound pack changelog service is not available.");
+    }
+    return this.soundPackChangelogService;
+  }
+
+  private async resolveSnapshotForExport(options: ExportOptions): Promise<SoundPackSnapshotDetail> {
+    const source = options.source.type === "gameProject" ? options.source : null;
+    if (!source) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+    if (options.snapshotId) {
+      const snapshot = await this.requireSoundPackSnapshotService().get(options.snapshotId);
+      if (!snapshot) {
+        throw new Error("SNAPSHOT_NOT_FOUND");
+      }
+      return snapshot;
+    }
+    return this.requireSoundPackSnapshotService().createCurrent(source.projectId);
+  }
+
+  private async runSnapshotExport(options: ExportOptions, outputDirectory: string): Promise<ExportRunResult> {
+    const source = options.source.type === "gameProject" ? options.source : null;
+    if (!source) {
+      return createFailedRunResult(0, "EXPORT_TYPE_SOURCE_MISMATCH", "Snapshot export targets require a game project source.");
+    }
+    const snapshot = options.createSnapshotBeforeExport
+      ? await this.requireSoundPackSnapshotService().create({
+        projectId: source.projectId,
+        name: `${source.name ?? source.projectId} Export Snapshot`,
+        status: "exported",
+        freeze: true,
+        exportOptions: JSON.parse(JSON.stringify(options)) as Record<string, unknown>,
+      })
+      : await this.resolveSnapshotForExport(options);
+    options.snapshotId = snapshot.id === "current" ? undefined : snapshot.id;
+    await mkdir(outputDirectory, { recursive: true });
+    const outputPath = await writeUniqueTextFile(outputDirectory, fileNameForTarget(options.target), `${JSON.stringify(snapshot.payload, null, 2)}\n`);
+    return {
+      ok: true,
+      outputPath,
+      files: [outputPath],
+      summary: {
+        requested: snapshot.itemCount,
+        exported: 1,
+        skipped: 0,
+        failed: 0,
+        warnings: snapshot.warningCount > 0 ? [`Snapshot includes ${snapshot.warningCount} warning(s).`] : [],
+      },
+    };
+  }
+
+  private async toSoundPackChangelogOptions(options: ExportOptions): Promise<SoundPackChangelogOptions> {
+    const source = options.source.type === "gameProject" ? options.source : null;
+    if (!source) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+    const project = this.gameProjectService?.getProject(source.projectId);
+    const fromSnapshotId = options.fromSnapshotId ?? options.snapshotId ?? options.baselineSnapshotId ?? project?.baselineSnapshotId ?? "";
+    if (!fromSnapshotId) {
+      throw new Error("SNAPSHOT_NOT_FOUND");
+    }
+    return {
+      projectId: source.projectId,
+      fromSnapshotId,
+      toSnapshotId: options.toSnapshotId,
+      compareToCurrent: options.compareToCurrent ?? !options.toSnapshotId,
+      format: changelogFormatForTarget(options.target),
+      includeDiffSummary: options.includeDiffSummary,
+      includeCandidateChanges: options.includeCandidateChanges,
+      includeRightsChanges: options.includeRightsChanges,
+      includeRiskChanges: options.includeRiskChanges,
+    };
+  }
+
   private recordHistorySafe(options: ExportOptions, sourceLabel: string, result: ExportRunResult): ExportRunResult {
     try {
       this.recordHistory(options, sourceLabel, result);
@@ -693,9 +853,10 @@ export class ExportCenterService {
       `
       INSERT INTO export_history (
         id, library_id, created_at, status, target, source_label, output_path,
-        files_json, summary_json, error_code, error_message, options_json, project_id
+        files_json, summary_json, error_code, error_message, options_json, project_id,
+        snapshot_id, baseline_snapshot_id, diff_summary_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         randomUUID(),
@@ -711,6 +872,9 @@ export class ExportCenterService {
         result.error?.message ?? null,
         JSON.stringify(options),
         options.source.type === "gameProject" ? options.source.projectId : null,
+        options.snapshotId ?? options.fromSnapshotId ?? null,
+        options.baselineSnapshotId ?? null,
+        null,
       ],
     );
   }
@@ -1146,6 +1310,14 @@ function fileNameForTarget(target: ExportTargetType): string {
       return "project-style-guide.md";
     case "project_checklist_markdown":
       return "project-checklist.md";
+    case "sound_pack_snapshot_json":
+      return "sound-pack-snapshot.json";
+    case "sound_pack_changelog_markdown":
+      return "sound-pack-changelog.md";
+    case "sound_pack_changelog_json":
+      return "sound-pack-changelog.json";
+    case "sound_pack_changelog_csv":
+      return "sound-pack-changelog.csv";
     case "generic_manifest":
     default:
       return "suwol-audio-manifest.json";
@@ -1159,14 +1331,15 @@ function kindForTarget(target: ExportTargetType): ExportPreview["plannedFiles"][
     target === "project_missing_report" ||
     target === "sound_request_markdown" ||
     target === "project_style_guide_markdown" ||
-    target === "project_checklist_markdown"
+    target === "project_checklist_markdown" ||
+    target === "sound_pack_changelog_markdown"
   ) {
     return "markdown";
   }
-  if (target === "unreal_csv" || target === "csv_report" || target === "sound_request_csv") {
+  if (target === "unreal_csv" || target === "csv_report" || target === "sound_request_csv" || target === "sound_pack_changelog_csv") {
     return "csv";
   }
-  if (target === "sound_request_json") {
+  if (target === "sound_request_json" || target === "sound_pack_changelog_json" || target === "sound_pack_snapshot_json") {
     return "json";
   }
   if (target === "monogame_content") {
@@ -1245,6 +1418,24 @@ function isSoundRequestTarget(target: ExportTargetType): boolean {
     target === "project_style_guide_markdown" ||
     target === "project_checklist_markdown"
   );
+}
+
+function isSoundPackChangelogTarget(target: ExportTargetType): boolean {
+  return (
+    target === "sound_pack_changelog_markdown" ||
+    target === "sound_pack_changelog_json" ||
+    target === "sound_pack_changelog_csv"
+  );
+}
+
+function changelogFormatForTarget(target: ExportTargetType): SoundPackChangelogFormat {
+  if (target === "sound_pack_changelog_json") {
+    return "json";
+  }
+  if (target === "sound_pack_changelog_csv") {
+    return "csv";
+  }
+  return "markdown";
 }
 
 function createSourceMismatchPreview(options: ExportOptions, message: string): ExportPreview {
@@ -1449,6 +1640,42 @@ function mapSoundRequestPreview(options: ExportOptions, preview: SoundRequestExp
   };
 }
 
+function mapSnapshotPreview(options: ExportOptions, snapshot: SoundPackSnapshotDetail, outputDirectory?: string): ExportPreview {
+  const base = outputDirectory ?? "<choose-folder>";
+  return {
+    ok: snapshot.errorCount === 0,
+    target: options.target,
+    assetCount: snapshot.itemCount,
+    exportSourceLabel: snapshot.payload.project.name,
+    issues: snapshot.payload.validation.issues.map((issue) => ({
+      severity: issue.severity === "info" ? "info" : issue.severity,
+      code: mapSoundBoardIssueCode(issue.code),
+      message: issue.message,
+      assetId: issue.assetId,
+    })),
+    plannedFiles: [{ path: join(base, fileNameForTarget(options.target)), kind: "json" }],
+  };
+}
+
+function mapChangelogPreview(options: ExportOptions, preview: SoundPackChangelogPreview, outputDirectory?: string): ExportPreview {
+  const base = outputDirectory ?? "<choose-folder>";
+  return {
+    ok: true,
+    target: options.target,
+    assetCount: preview.diff.changes.length,
+    exportSourceLabel: `${preview.diff.fromName} -> ${preview.diff.toName}`,
+    issues: preview.diff.changes
+      .filter((change) => change.severity !== "info")
+      .map((change) => ({
+        severity: change.severity === "breaking" ? "error" : "warning",
+        code: change.type === "risk_changed" ? "SNAPSHOT_COMPARE_FAILED" : "PROJECT_SOUND_PACK_VALIDATION_BLOCKED",
+        message: change.message,
+        assetId: change.assetId,
+      })),
+    plannedFiles: [{ path: join(base, preview.fileName), kind: kindForTarget(options.target) }],
+  };
+}
+
 function mapProjectSoundPackResult(result: ProjectSoundPackExportResult): ExportRunResult {
   return {
     ok: result.ok,
@@ -1476,6 +1703,22 @@ function mapSoundRequestResult(result: SoundRequestExportResult): ExportRunResul
       skipped: result.summary.skipped,
       failed: result.summary.failed,
       warnings: result.summary.warnings,
+    },
+    error: result.error,
+  };
+}
+
+function mapChangelogResult(result: SoundPackChangelogResult): ExportRunResult {
+  return {
+    ok: result.ok,
+    outputPath: result.outputPath,
+    files: result.files,
+    summary: {
+      requested: result.diff.changes.length,
+      exported: result.ok ? result.files.length : 0,
+      skipped: 0,
+      failed: result.ok ? 0 : 1,
+      warnings: result.diff.summary.warnings > 0 ? [`${result.diff.summary.warnings} warning change(s) detected.`] : [],
     },
     error: result.error,
   };

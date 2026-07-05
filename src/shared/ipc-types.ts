@@ -73,6 +73,17 @@ import type {
   SoundCandidateReviewInput,
   SoundCandidateSuggestInput,
   SoundCandidateSuggestion,
+  SoundPackChangelogOptions,
+  SoundPackChangelogPreview,
+  SoundPackChangelogResult,
+  SoundPackCompareInput,
+  SoundPackDiffResult,
+  SoundPackRollbackApplyInput,
+  SoundPackRollbackPreview,
+  SoundPackRollbackResult,
+  SoundPackSnapshotDetail,
+  SoundPackSnapshotInput,
+  SoundPackSnapshotRecord,
   SoundProjectChecklistItemInput,
   SoundProjectChecklistItemRecord,
   SoundProjectChecklistItemUpdateInput,
@@ -239,6 +250,20 @@ export interface SuwolAudioApi {
   soundRequest: {
     preview: (input: SoundRequestExportOptions & { outputPath?: string }) => Promise<SoundRequestExportPreview>;
     export: (input: SoundRequestExportOptions & { outputPath?: string }) => Promise<SoundRequestExportResult | null>;
+  };
+  soundSnapshots: {
+    list: (projectId: string) => Promise<SoundPackSnapshotRecord[]>;
+    create: (input: SoundPackSnapshotInput) => Promise<SoundPackSnapshotDetail>;
+    get: (snapshotId: string) => Promise<SoundPackSnapshotDetail | null>;
+    delete: (snapshotId: string) => Promise<BatchResult>;
+    freeze: (snapshotId: string) => Promise<SoundPackSnapshotDetail>;
+    setBaseline: (snapshotId: string) => Promise<GameProjectRecord>;
+    compare: (input: SoundPackCompareInput) => Promise<SoundPackDiffResult>;
+    compareCurrent: (input: { projectId: string; fromSnapshotId: string }) => Promise<SoundPackDiffResult>;
+    rollbackPreview: (snapshotId: string) => Promise<SoundPackRollbackPreview>;
+    rollbackApply: (input: SoundPackRollbackApplyInput) => Promise<SoundPackRollbackResult>;
+    changelogPreview: (input: SoundPackChangelogOptions) => Promise<SoundPackChangelogPreview>;
+    changelogExport: (input: SoundPackChangelogOptions & { outputPath?: string }) => Promise<SoundPackChangelogResult | null>;
   };
   soundBoardExport: {
     projectPreview: (input: SoundBoardExportOptions & { outputPath?: string }) => Promise<SoundBoardExportPreview>;

@@ -128,7 +128,8 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 10. Confirm original source audio files are never renamed, edited, transcoded, moved, or deleted.
 11. Select a game project as the source.
 12. Preview Project Sound Pack, Project Manifest, Project Missing Report, and Project Codex Instruction.
-13. Confirm Export History shows successful and failed runs and that deleting a history row does not delete exported files.
+13. Preview Sound Pack Snapshot JSON and Sound Pack Changelog Markdown/JSON/CSV from a game project source.
+14. Confirm Export History shows successful and failed runs and that deleting a history row does not delete exported files.
 
 ## H2. Sound Usage Board
 
@@ -200,6 +201,19 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 11. Confirm Unreal CSV contains `UsageKey` and MonoGame content list contains `# Usage:` comments.
 12. Confirm original source audio files are still present and unchanged.
 13. Move or delete one selected source file outside the app, preview again, and confirm export is blocked by a missing-file error.
+
+## H3A. Sound Pack Snapshot / Diff / Rollback
+
+1. In Sound Usage Board, create a project with at least two candidate assets for one usage key.
+2. Select and approve the first candidate.
+3. Create a Sound Pack Snapshot, freeze it, and set it as the project baseline.
+4. Select and approve the second candidate on the current board.
+5. Compare the baseline snapshot against current and confirm selection/approval changes are shown.
+6. Open Sound Pack Changelog and confirm Export Center opens with the project source and changelog target prefilled.
+7. Export snapshot JSON and changelog Markdown/JSON/CSV, then inspect that absolute source paths are excluded by default.
+8. Run rollback preview and confirm no change is applied before confirmation.
+9. Apply rollback and confirm the first candidate is selected/approved again while the second candidate is no longer selected/approved.
+10. Confirm no usage rows or audio assets were created/deleted and no source audio or engine project files were modified.
 
 ## I. Trash Safety
 

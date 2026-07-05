@@ -46,6 +46,7 @@ import { ProjectChecklistPanel } from "./ProjectChecklistPanel";
 import { ProjectStyleGuidePanel } from "./ProjectStyleGuidePanel";
 import { SoundBoardDashboard } from "./SoundBoardDashboard";
 import { SoundBoardValidationPanel } from "./SoundBoardValidationPanel";
+import { SoundPackSnapshotPanel } from "./SoundPackSnapshotPanel";
 import { SoundWorkTodoBoard } from "./SoundWorkTodoBoard";
 import { EmptyState } from "./ui/EmptyState";
 
@@ -836,6 +837,17 @@ export function SoundUsageBoardDialog({
                   onUpdate={(itemId, input) => void runTask(() => updateChecklistItem(itemId, input))}
                   onDelete={(itemId) => void runTask(() => deleteChecklistItem(itemId))}
                 />
+                {activeProject ? (
+                  <SoundPackSnapshotPanel
+                    project={activeProject}
+                    disabled={busy}
+                    onProjectChanged={async () => {
+                      await refreshProjects();
+                      await refreshBoard(activeProject.id);
+                    }}
+                    onOpenExportCenter={onOpenExportCenter}
+                  />
+                ) : null}
               </>
             ) : null}
 

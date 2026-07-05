@@ -20,6 +20,7 @@ export interface GameProjectRow {
   engine_type: string;
   root_namespace: string;
   default_export_format: string;
+  baseline_snapshot_id: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -119,6 +120,7 @@ export class GameProjectService {
           engine_type = ?,
           root_namespace = ?,
           default_export_format = ?,
+          baseline_snapshot_id = ?,
           updated_at = ?
       WHERE id = ? AND library_id = ?
       `,
@@ -130,6 +132,7 @@ export class GameProjectService {
         input.defaultExportFormat === undefined
           ? current.defaultExportFormat
           : coerceProjectExportFormat(input.defaultExportFormat),
+        input.baselineSnapshotId === undefined ? current.baselineSnapshotId : input.baselineSnapshotId,
         new Date().toISOString(),
         projectId,
         context.library.id,
@@ -220,6 +223,7 @@ export function mapGameProjectRow(row: GameProjectRow): GameProjectRecord {
     engineType: coerceGameEngine(row.engine_type),
     rootNamespace: row.root_namespace,
     defaultExportFormat: coerceProjectExportFormat(row.default_export_format),
+    baselineSnapshotId: row.baseline_snapshot_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
