@@ -1,4 +1,4 @@
-import { FileOutput, Grid2X2, Import, List, RefreshCw, Search, Settings } from "lucide-react";
+import { ClipboardList, FileOutput, Grid2X2, Import, List, RefreshCw, Search, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AssetSortOption, CollectionRecord, TagRecord, ViewMode } from "../../shared/library-types";
 import type { AppSettings } from "../../shared/settings-types";
@@ -23,6 +23,7 @@ interface SearchFilterBarProps {
   onImport: () => void;
   onRefresh: () => void;
   onExport: () => void;
+  onSoundBoard: () => void;
   onSettingsChanged: (settings: AppSettings) => void;
 }
 
@@ -56,6 +57,7 @@ export function SearchFilterBar({
   onImport,
   onRefresh,
   onExport,
+  onSoundBoard,
   onSettingsChanged,
 }: SearchFilterBarProps): JSX.Element {
   const { t } = useI18n();
@@ -180,6 +182,9 @@ export function SearchFilterBar({
       </button>
       <button className="icon-button" type="button" onClick={onExport} title={t("export.title")} aria-label={t("export.title")}>
         <FileOutput size={16} aria-hidden="true" />
+      </button>
+      <button className="icon-button" type="button" onClick={onSoundBoard} title={t("soundBoard.title" as MessageKey)} aria-label={t("soundBoard.title" as MessageKey)}>
+        <ClipboardList size={16} aria-hidden="true" />
       </button>
       <button className="icon-button" type="button" onClick={() => onViewModeChange("list")} title={t("common.list")} aria-label={t("common.list")}>
         <List size={16} aria-hidden="true" className={viewMode === "list" ? "is-active-icon" : ""} />

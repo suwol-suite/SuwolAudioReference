@@ -14,11 +14,36 @@ import type {
   AssetRightsInput,
   CodexInstructionPreviewInput,
   ExportOptions,
+  ExportHistoryListQuery,
   ExportPresetInput,
   ManifestPreviewInput,
 } from "../../shared/export-types";
 import type { Locale } from "../../shared/i18n/locales";
 import type { QuickPreviewSettingsInput } from "../../shared/settings-types";
+import type { ProjectSoundPackOptions } from "../../shared/project-sound-pack-types";
+import type {
+  GameProjectInput,
+  GameProjectUpdateInput,
+  SoundBoardExportOptions,
+  SoundCandidateReviewInput,
+  SoundProjectChecklistItemInput,
+  SoundProjectChecklistItemUpdateInput,
+  SoundProjectStyleGuideInput,
+  SoundRequestExportOptions,
+  SoundCandidateSuggestInput,
+  SoundUsageBulkCreateInput,
+  SoundUsageBulkPreviewInput,
+  SoundUsageCandidateInput,
+  SoundUsageCandidateUpdateInput,
+  SoundUsageCustomTemplateInput,
+  SoundUsageItemInput,
+  SoundUsageItemUpdateInput,
+  SoundUsageListQuery,
+  SoundUsageWorkflowUpdateInput,
+  SoundUsageTemplateApplyInput,
+  SoundUsageTemplateId,
+  SoundWorkTodoQuery,
+} from "../../shared/sound-board-types";
 import { tMain } from "../i18n/main-i18n";
 import { formatRendererErrorForLog, type RendererErrorLogInput } from "../services/error-service";
 import type { AppServices } from "../services/app-services";
@@ -238,8 +263,172 @@ export function registerIpcHandlers(
   ipcMain.handle("export:presets:delete", (_event, presetId: string) =>
     services.exportCenterService.deletePreset(presetId),
   );
+  ipcMain.handle("export:projectSources:list", () => services.exportCenterService.listProjectSources());
+  ipcMain.handle("export:history:list", (_event, query?: ExportHistoryListQuery) =>
+    services.exportCenterService.listHistory(query),
+  );
+  ipcMain.handle("export:history:get", (_event, historyId: string) =>
+    services.exportCenterService.getHistory(historyId),
+  );
+  ipcMain.handle("export:history:delete", (_event, historyId: string) =>
+    services.exportCenterService.deleteHistory(historyId),
+  );
   ipcMain.handle("export:showOutputPath", async (_event, path: string) => {
     shell.showItemInFolder(path);
+    return true;
+  });
+
+  ipcMain.handle("projects:list", (_event, input?: { includeArchived?: boolean }) =>
+    services.gameProjectService.listProjects(input?.includeArchived),
+  );
+  ipcMain.handle("projects:create", (_event, input: GameProjectInput) =>
+    services.gameProjectService.createProject(input),
+  );
+  ipcMain.handle("projects:update", (_event, projectId: string, input: GameProjectUpdateInput) =>
+    services.gameProjectService.updateProject(projectId, input),
+  );
+  ipcMain.handle("projects:archive", (_event, projectId: string) =>
+    services.gameProjectService.archiveProject(projectId),
+  );
+  ipcMain.handle("projects:getSummary", (_event, projectId: string) =>
+    services.gameProjectService.getSummary(projectId),
+  );
+
+  ipcMain.handle("usage:list", (_event, query: SoundUsageListQuery) => services.soundUsageService.listItems(query));
+  ipcMain.handle("usage:get", (_event, usageItemId: string) => services.soundUsageService.getItem(usageItemId));
+  ipcMain.handle("usage:create", (_event, input: SoundUsageItemInput) => services.soundUsageService.createItem(input));
+  ipcMain.handle("usage:update", (_event, usageItemId: string, input: SoundUsageItemUpdateInput) =>
+    services.soundUsageService.updateItem(usageItemId, input),
+  );
+  ipcMain.handle("usage:delete", (_event, usageItemId: string) => services.soundUsageService.deleteItem(usageItemId));
+  ipcMain.handle("usage:bulkPreview", (_event, input: SoundUsageBulkPreviewInput) =>
+    services.soundUsageBulkImportService.preview(input),
+  );
+  ipcMain.handle("usage:bulkCreate", (_event, input: SoundUsageBulkCreateInput) =>
+    services.soundUsageBulkImportService.create(input),
+  );
+  ipcMain.handle("usage:templates:list", () => services.soundUsageService.listTemplates());
+  ipcMain.handle("usage:bulkCreateFromTemplate", (_event, input: { projectId: string; templateId: SoundUsageTemplateId }) =>
+    services.soundUsageService.bulkCreateFromTemplate(input.projectId, input.templateId),
+  );
+  ipcMain.handle("usage:getSummary", (_event, projectId: string) => services.soundUsageService.getSummary(projectId));
+  ipcMain.handle("usage:getMissingReport", (_event, projectId: string) =>
+    services.soundUsageService.getMissingReport(projectId),
+  );
+  ipcMain.handle("usage:validateBoard", (_event, projectId: string) =>
+    services.soundBoardValidationService.validateBoard(projectId),
+  );
+  ipcMain.handle("usage:getAssetLinks", (_event, assetId: string) =>
+    services.soundBoardValidationService.getAssetLinks(assetId),
+  );
+  ipcMain.handle("usage:updateStatus", (_event, usageItemId: string, input: { status: SoundUsageItemUpdateInput["status"]; note?: string }) =>
+    services.soundUsageService.updateStatus(usageItemId, input.status ?? "reviewing", input.note),
+  );
+  ipcMain.handle("usage:applySuggestedKey", (_event, usageItemId: string, input?: { suggestedKey?: string }) =>
+    services.soundUsageService.applySuggestedKey(usageItemId, input?.suggestedKey),
+  );
+
+  ipcMain.handle("usageTemplates:list", () => services.soundUsageTemplateService.listTemplates());
+  ipcMain.handle("usageTemplates:createFromProject", (_event, input: SoundUsageCustomTemplateInput) =>
+    services.soundUsageTemplateService.createFromProject(input),
+  );
+  ipcMain.handle("usageTemplates:previewApply", (_event, input: SoundUsageTemplateApplyInput) =>
+    services.soundUsageTemplateService.previewApply(input),
+  );
+  ipcMain.handle("usageTemplates:apply", (_event, input: SoundUsageTemplateApplyInput) =>
+    services.soundUsageTemplateService.apply(input),
+  );
+  ipcMain.handle("usageTemplates:rename", (_event, templateId: string, input: { name: string }) =>
+    services.soundUsageTemplateService.rename(templateId, input.name),
+  );
+  ipcMain.handle("usageTemplates:delete", (_event, templateId: string) =>
+    services.soundUsageTemplateService.delete(templateId),
+  );
+
+  ipcMain.handle("usageCandidates:list", (_event, usageItemId: string) =>
+    services.soundCandidateService.listCandidates(usageItemId),
+  );
+  ipcMain.handle("usageCandidates:add", (_event, input: SoundUsageCandidateInput) =>
+    services.soundCandidateService.addCandidate(input),
+  );
+  ipcMain.handle("usageCandidates:remove", (_event, candidateId: string) =>
+    services.soundCandidateService.removeCandidate(candidateId),
+  );
+  ipcMain.handle("usageCandidates:update", (_event, candidateId: string, input: SoundUsageCandidateUpdateInput) =>
+    services.soundCandidateService.updateCandidate(candidateId, input),
+  );
+  ipcMain.handle("usageCandidates:setSelected", (_event, candidateId: string, selected: boolean) =>
+    services.soundCandidateService.setSelected(candidateId, selected),
+  );
+  ipcMain.handle("usageCandidates:setRejected", (_event, candidateId: string, rejected: boolean) =>
+    services.soundCandidateService.setRejected(candidateId, rejected),
+  );
+  ipcMain.handle("usageCandidates:suggest", (_event, input: SoundCandidateSuggestInput) =>
+    services.soundCandidateService.suggest(input),
+  );
+  ipcMain.handle("usageCandidates:findSimilarForUsage", (_event, input: SoundCandidateSuggestInput) =>
+    services.soundCandidateService.findSimilarForUsage(input),
+  );
+  ipcMain.handle("usageCandidates:bulkAdd", (_event, input: { usageItemId: string; assetIds: string[]; selected?: boolean }) =>
+    services.soundCandidateService.bulkAdd(input),
+  );
+  ipcMain.handle("soundWorkflow:getTodoSummary", (_event, projectId: string) =>
+    services.soundWorkflowService.getTodoSummary(projectId),
+  );
+  ipcMain.handle("soundWorkflow:listTodoItems", (_event, query: SoundWorkTodoQuery) =>
+    services.soundWorkflowService.listTodoItems(query),
+  );
+  ipcMain.handle("soundWorkflow:updateUsageWorkflow", (_event, usageItemId: string, input: SoundUsageWorkflowUpdateInput) =>
+    services.soundWorkflowService.updateUsageWorkflow(usageItemId, input),
+  );
+  ipcMain.handle("soundWorkflow:updateCandidateReview", (_event, candidateId: string, input: SoundCandidateReviewInput) =>
+    services.soundWorkflowService.updateCandidateReview(candidateId, input),
+  );
+  ipcMain.handle("soundStyleGuide:get", (_event, projectId: string) =>
+    services.soundStyleGuideService.get(projectId),
+  );
+  ipcMain.handle("soundStyleGuide:update", (_event, projectId: string, input: SoundProjectStyleGuideInput) =>
+    services.soundStyleGuideService.update(projectId, input),
+  );
+  ipcMain.handle("soundChecklist:list", (_event, projectId: string) =>
+    services.soundChecklistService.list(projectId),
+  );
+  ipcMain.handle("soundChecklist:addBuiltins", (_event, projectId: string) =>
+    services.soundChecklistService.addBuiltins(projectId),
+  );
+  ipcMain.handle("soundChecklist:create", (_event, input: SoundProjectChecklistItemInput) =>
+    services.soundChecklistService.create(input),
+  );
+  ipcMain.handle("soundChecklist:update", (_event, itemId: string, input: SoundProjectChecklistItemUpdateInput) =>
+    services.soundChecklistService.update(itemId, input),
+  );
+  ipcMain.handle("soundChecklist:delete", (_event, itemId: string) =>
+    services.soundChecklistService.delete(itemId),
+  );
+  ipcMain.handle("soundRequest:preview", (_event, input: SoundRequestExportOptions & { outputPath?: string }) =>
+    services.soundRequestExportService.preview(input, input.outputPath),
+  );
+  ipcMain.handle("soundRequest:export", async (_event, input: SoundRequestExportOptions & { outputPath?: string }) => {
+    const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
+    return outputPath ? services.soundRequestExportService.export(input, outputPath) : null;
+  });
+  ipcMain.handle("export:projectPreview", (_event, input: SoundBoardExportOptions & { outputPath?: string }) =>
+    services.soundBoardExportService.preview(input, input.outputPath),
+  );
+  ipcMain.handle("export:projectRun", async (_event, input: SoundBoardExportOptions & { outputPath?: string }) => {
+    const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
+    return outputPath ? services.soundBoardExportService.run(input, outputPath) : null;
+  });
+  ipcMain.handle("projectSoundPack:getProfiles", () => services.projectSoundPackService.getProfiles());
+  ipcMain.handle("projectSoundPack:preview", (_event, input: ProjectSoundPackOptions) =>
+    services.projectSoundPackService.preview(input, input.outputPath),
+  );
+  ipcMain.handle("projectSoundPack:export", async (_event, input: ProjectSoundPackOptions) => {
+    const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
+    return outputPath ? services.projectSoundPackService.export(input, outputPath) : null;
+  });
+  ipcMain.handle("projectSoundPack:openOutput", async (_event, outputPath: string) => {
+    await shell.openPath(outputPath);
     return true;
   });
 

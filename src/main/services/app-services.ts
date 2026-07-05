@@ -9,10 +9,22 @@ import { LibraryService } from "./library-service";
 import { DiagnosticsService } from "./diagnostics-service";
 import { DuplicateService } from "./duplicate-service";
 import { ExportCenterService } from "./export-center-service";
+import { GameProjectService } from "./game-project-service";
 import { LibraryManagementService } from "./library-management-service";
 import { LoggerService } from "./logger-service";
 import { PermanentDeleteService } from "./permanent-delete-service";
+import { ProjectSoundPackService } from "./project-sound-pack-service";
 import { SettingsService } from "./settings-service";
+import { SoundBoardExportService } from "./sound-board-export-service";
+import { SoundBoardValidationService } from "./sound-board-validation-service";
+import { SoundCandidateService } from "./sound-candidate-service";
+import { SoundChecklistService } from "./sound-checklist-service";
+import { SoundRequestExportService } from "./sound-request-export-service";
+import { SoundStyleGuideService } from "./sound-style-guide-service";
+import { SoundUsageBulkImportService } from "./sound-usage-bulk-import-service";
+import { SoundUsageService } from "./sound-usage-service";
+import { SoundUsageTemplateService } from "./sound-usage-template-service";
+import { SoundWorkflowService } from "./sound-workflow-service";
 import { TagService } from "./tag-service";
 import { TrashService } from "./trash-service";
 
@@ -33,6 +45,18 @@ export interface AppServices {
   duplicateService: DuplicateService;
   libraryManagementService: LibraryManagementService;
   exportCenterService: ExportCenterService;
+  gameProjectService: GameProjectService;
+  soundUsageService: SoundUsageService;
+  soundCandidateService: SoundCandidateService;
+  soundBoardExportService: SoundBoardExportService;
+  soundUsageBulkImportService: SoundUsageBulkImportService;
+  soundUsageTemplateService: SoundUsageTemplateService;
+  soundBoardValidationService: SoundBoardValidationService;
+  projectSoundPackService: ProjectSoundPackService;
+  soundWorkflowService: SoundWorkflowService;
+  soundStyleGuideService: SoundStyleGuideService;
+  soundChecklistService: SoundChecklistService;
+  soundRequestExportService: SoundRequestExportService;
 }
 
 export function createAppServices(userDataPath: string): AppServices {
@@ -52,7 +76,27 @@ export function createAppServices(userDataPath: string): AppServices {
   const diagnosticsService = new DiagnosticsService(libraryService, loggerService);
   const duplicateService = new DuplicateService(libraryService, assetService, trashService);
   const libraryManagementService = new LibraryManagementService(libraryService, assetService, importService);
-  const exportCenterService = new ExportCenterService(libraryService, assetService);
+  const gameProjectService = new GameProjectService(libraryService);
+  const soundUsageService = new SoundUsageService(libraryService, assetService);
+  const soundCandidateService = new SoundCandidateService(libraryService, assetService, audioSimilarityService);
+  const soundBoardExportService = new SoundBoardExportService(libraryService, assetService, soundCandidateService);
+  const soundUsageBulkImportService = new SoundUsageBulkImportService(libraryService, assetService);
+  const soundUsageTemplateService = new SoundUsageTemplateService(libraryService, assetService);
+  const soundBoardValidationService = new SoundBoardValidationService(libraryService, assetService, soundCandidateService);
+  const projectSoundPackService = new ProjectSoundPackService(libraryService, assetService, soundCandidateService);
+  const soundWorkflowService = new SoundWorkflowService(libraryService, assetService, soundCandidateService);
+  const soundStyleGuideService = new SoundStyleGuideService(libraryService);
+  const soundChecklistService = new SoundChecklistService(libraryService);
+  const soundRequestExportService = new SoundRequestExportService(libraryService, assetService, soundCandidateService);
+  const exportCenterService = new ExportCenterService(
+    libraryService,
+    assetService,
+    projectSoundPackService,
+    soundBoardExportService,
+    gameProjectService,
+    soundBoardValidationService,
+    soundRequestExportService,
+  );
 
   return {
     libraryService,
@@ -71,5 +115,17 @@ export function createAppServices(userDataPath: string): AppServices {
     duplicateService,
     libraryManagementService,
     exportCenterService,
+    gameProjectService,
+    soundUsageService,
+    soundCandidateService,
+    soundBoardExportService,
+    soundUsageBulkImportService,
+    soundUsageTemplateService,
+    soundBoardValidationService,
+    projectSoundPackService,
+    soundWorkflowService,
+    soundStyleGuideService,
+    soundChecklistService,
+    soundRequestExportService,
   };
 }

@@ -1,7 +1,8 @@
-import { FileOutput, X } from "lucide-react";
+import { FileOutput, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
   CodexInstructionTemplate,
+  ExportHistoryRecord,
   ExportOptions,
   ExportPresetRecord,
   ExportPreview,
@@ -9,12 +10,21 @@ import type {
   ExportSource,
   ExportTargetType,
   ManifestPreviewInput,
+  ProjectExportSourceSummary,
 } from "../../shared/export-types";
+import type {
+  ProjectSoundPackDryRun,
+  ProjectSoundPackEngineProfile,
+  ProjectSoundPackFilenamePolicy,
+  ProjectSoundPackOptions,
+} from "../../shared/project-sound-pack-types";
+import type { SoundBoardExportFormat, SoundBoardExportOptions, SoundRequestExportOptions } from "../../shared/sound-board-types";
 import type { AssetListQuery, CollectionRecord, SmartFolderId, TagRecord } from "../../shared/library-types";
 import type { MessageKey } from "../i18n/i18n";
 import { useI18n } from "../i18n/useI18n";
 import { ExportPresetSelector } from "./ExportPresetSelector";
 import { ExportPreviewPanel } from "./ExportPreviewPanel";
+import { ProjectSoundPackPreview } from "./ProjectSoundPackPreview";
 
 interface ExportCenterDialogProps {
   open: boolean;
@@ -22,8 +32,11 @@ interface ExportCenterDialogProps {
   currentQuery: AssetListQuery;
   tags: TagRecord[];
   collections: CollectionRecord[];
+  initialOptions?: Partial<ExportOptions> | null;
   onClose: () => void;
 }
+
+export type ExportCenterInitialOptions = Partial<ExportOptions>;
 
 const TARGET_OPTIONS: ExportTargetType[] = [
   "codex_markdown",
@@ -37,7 +50,31 @@ const TARGET_OPTIONS: ExportTargetType[] = [
   "sound_pack_metadata",
   "sound_pack_folder",
   "csv_report",
+  "project_sound_pack",
+  "project_manifest",
+  "project_missing_report",
+  "project_codex_instruction",
+  "sound_request_markdown",
+  "sound_request_csv",
+  "sound_request_json",
+  "project_style_guide_markdown",
+  "project_checklist_markdown",
 ];
+
+const PROJECT_TARGET_OPTIONS = new Set<ExportTargetType>([
+  "project_sound_pack",
+  "project_manifest",
+  "project_missing_report",
+  "project_codex_instruction",
+  "sound_request_markdown",
+  "sound_request_csv",
+  "sound_request_json",
+  "project_style_guide_markdown",
+  "project_checklist_markdown",
+]);
+
+const ENGINE_OPTIONS: ProjectSoundPackEngineProfile[] = ["generic", "unity", "unreal", "monogame"];
+const FILENAME_OPTIONS: ProjectSoundPackFilenamePolicy[] = ["keep_original", "usage_key", "category_usage_key"];
 
 const TEMPLATE_OPTIONS: CodexInstructionTemplate[] = [
   "unity_import_plan",
@@ -81,13 +118,17 @@ export function ExportCenterDialog({
   currentQuery,
   tags,
   collections,
+  initialOptions,
   onClose,
 }: ExportCenterDialogProps): JSX.Element | null {
   const { t } = useI18n();
   const [options, setOptions] = useState<ExportOptions>(() => createDefaultOptions(selectedAssetIds, currentQuery));
   const [presets, setPresets] = useState<ExportPresetRecord[]>([]);
+  const [projectSources, setProjectSources] = useState<ProjectExportSourceSummary[]>([]);
+  const [history, setHistory] = useState<ExportHistoryRecord[]>([]);
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [previewText, setPreviewText] = useState("");
+  const [projectSoundPackPreview, setProjectSoundPackPreview] = useState<ProjectSoundPackDryRun | null>(null);
   const [result, setResult] = useState<ExportRunResult | null>(null);
   const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -96,8 +137,19 @@ export function ExportCenterDialog({
   const selectedCollectionId = options.source.type === "collection" ? options.source.collectionId : "";
   const selectedTagId = options.source.type === "tag" ? options.source.tagId : "";
   const selectedSmartFolder = options.source.type === "smartFolder" ? options.source.smartFolder : "all";
+  const selectedProjectId = options.source.type === "gameProject" ? options.source.projectId : "";
+  const selectedProjectSource = projectSources.find((source) => source.project.id === selectedProjectId) ?? projectSources[0] ?? null;
   const isCodexTarget = options.target === "codex_markdown" || options.target === "codex_json";
-  const isManifestTarget = !isCodexTarget && options.target !== "sound_pack_folder" && options.target !== "sound_pack_metadata" && options.target !== "csv_report";
+  const isProjectTarget = PROJECT_TARGET_OPTIONS.has(options.target);
+  const isSoundRequestTarget = [
+    "sound_request_markdown",
+    "sound_request_csv",
+    "sound_request_json",
+    "project_style_guide_markdown",
+    "project_checklist_markdown",
+  ].includes(options.target);
+  const needsProjectEngineOptions = ["project_sound_pack", "project_manifest", "project_codex_instruction"].includes(options.target);
+  const isManifestTarget = !isProjectTarget && !isCodexTarget && options.target !== "sound_pack_folder" && options.target !== "sound_pack_metadata" && options.target !== "csv_report";
 
   const currentConfig = useMemo(() => options, [options]);
 
@@ -105,16 +157,21 @@ export function ExportCenterDialog({
     if (!open) {
       return;
     }
-    setOptions((current) => ({
-      ...current,
-      source: selectedAssetIds.length > 0 ? { type: "selected", assetIds: selectedAssetIds } : { type: "query", query: currentQuery, label: t("export.currentFilter") },
-    }));
+    const source = selectedAssetIds.length > 0 ? { type: "selected" as const, assetIds: selectedAssetIds } : { type: "query" as const, query: currentQuery, label: t("export.currentFilter") };
+    setOptions({
+      ...createDefaultOptions(selectedAssetIds, currentQuery),
+      ...initialOptions,
+      source: initialOptions?.source ?? source,
+    });
     setPreview(null);
     setPreviewText("");
+    setProjectSoundPackPreview(null);
     setResult(null);
     setWarningsAcknowledged(false);
     void refreshPresets();
-  }, [open, selectedAssetIds.join("|")]);
+    void refreshProjectSources();
+    void refreshHistory();
+  }, [open, selectedAssetIds.join("|"), initialOptions]);
 
   useEffect(() => {
     if (!open) {
@@ -138,22 +195,35 @@ export function ExportCenterDialog({
     setPresets(await window.suwolAudio.export.presetsList());
   }
 
+  async function refreshProjectSources(): Promise<void> {
+    setProjectSources(await window.suwolAudio.export.projectSourcesList());
+  }
+
+  async function refreshHistory(): Promise<void> {
+    setHistory(await window.suwolAudio.export.historyList({ limit: 8 }));
+  }
+
   function updateOptions(input: Partial<ExportOptions>): void {
     setOptions((current) => ({ ...current, ...input }));
     setPreview(null);
     setPreviewText("");
+    setProjectSoundPackPreview(null);
     setResult(null);
     setWarningsAcknowledged(false);
   }
 
   function updateSource(source: ExportSource): void {
-    updateOptions({ source });
+    updateOptions({
+      source,
+      target: source.type !== "gameProject" && PROJECT_TARGET_OPTIONS.has(options.target) ? "codex_markdown" : options.target,
+    });
   }
 
   function applyPreset(config: Partial<ExportOptions>): void {
     setOptions((current) => ({ ...current, ...config, source: config.source ?? current.source }));
     setPreview(null);
     setPreviewText("");
+    setProjectSoundPackPreview(null);
     setResult(null);
   }
 
@@ -163,7 +233,18 @@ export function ExportCenterDialog({
     try {
       const nextPreview = await window.suwolAudio.export.preview(options);
       setPreview(nextPreview);
-      if (isCodexTarget) {
+      if (options.target === "project_sound_pack" && options.source.type === "gameProject") {
+        setProjectSoundPackPreview(await window.suwolAudio.projectSoundPack.preview(toProjectSoundPackOptions(options)));
+        setPreviewText("");
+      } else if (isSoundRequestTarget && options.source.type === "gameProject") {
+        const requestPreview = await window.suwolAudio.soundRequest.preview(toSoundRequestExportOptions(options));
+        setProjectSoundPackPreview(null);
+        setPreviewText(requestPreview.previewText ?? "");
+      } else if (isProjectTarget && options.source.type === "gameProject") {
+        const boardPreview = await window.suwolAudio.soundBoardExport.projectPreview(toSoundBoardExportOptions(options));
+        setProjectSoundPackPreview(null);
+        setPreviewText(boardPreview.previewText ?? "");
+      } else if (isCodexTarget) {
         setPreviewText(
           await window.suwolAudio.codex.previewInstruction({
             source: options.source,
@@ -184,6 +265,7 @@ export function ExportCenterDialog({
         );
       } else {
         setPreviewText("");
+        setProjectSoundPackPreview(null);
       }
     } finally {
       setBusy(false);
@@ -199,10 +281,16 @@ export function ExportCenterDialog({
       });
       if (nextResult) {
         setResult(nextResult);
+        void refreshHistory();
       }
     } finally {
       setBusy(false);
     }
+  }
+
+  async function deleteHistory(historyId: string): Promise<void> {
+    await window.suwolAudio.export.historyDelete(historyId);
+    await refreshHistory();
   }
 
   return (
@@ -236,6 +324,9 @@ export function ExportCenterDialog({
                     updateSource({ type: "tag", tagId: tags[0]?.id ?? "", name: tags[0]?.name });
                   } else if (next === "smartFolder") {
                     updateSource({ type: "smartFolder", smartFolder: "all", name: t("asset.all") });
+                  } else if (next === "gameProject") {
+                    const project = projectSources[0]?.project;
+                    updateSource(project ? { type: "gameProject", projectId: project.id, name: project.name } : { type: "library" });
                   } else {
                     updateSource({ type: "library" });
                   }
@@ -248,6 +339,7 @@ export function ExportCenterDialog({
                 <option value="collection">{t("export.source.collection")}</option>
                 <option value="tag">{t("export.source.tag")}</option>
                 <option value="smartFolder">{t("export.source.smartFolder")}</option>
+                <option value="gameProject" disabled={projectSources.length === 0}>{t("export.source.gameProject")}</option>
                 <option value="library">{t("export.source.library")}</option>
               </select>
 
@@ -304,13 +396,41 @@ export function ExportCenterDialog({
                   ))}
                 </select>
               ) : null}
+
+              {sourceKind === "gameProject" ? (
+                <>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(event) => {
+                      const source = projectSources.find((item) => item.project.id === event.target.value);
+                      if (source) {
+                        updateSource({ type: "gameProject", projectId: source.project.id, name: source.project.name });
+                      }
+                    }}
+                  >
+                    {projectSources.map((source) => (
+                      <option key={source.project.id} value={source.project.id}>
+                        {source.project.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedProjectSource ? (
+                    <dl className="export-project-summary">
+                      <div><dt>{t("export.project.total")}</dt><dd>{selectedProjectSource.summary.total}</dd></div>
+                      <div><dt>{t("export.project.approved")}</dt><dd>{selectedProjectSource.summary.approved}</dd></div>
+                      <div><dt>{t("export.project.requiredMissing")}</dt><dd>{selectedProjectSource.summary.requiredMissing}</dd></div>
+                      <div><dt>{t("export.project.risks")}</dt><dd>{selectedProjectSource.riskCount}</dd></div>
+                    </dl>
+                  ) : null}
+                </>
+              ) : null}
             </section>
 
             <section className="export-section">
               <h3>{t("export.target")}</h3>
               <select value={options.target} onChange={(event) => updateOptions({ target: event.target.value as ExportTargetType })}>
                 {TARGET_OPTIONS.map((target) => (
-                  <option key={target} value={target}>
+                  <option key={target} value={target} disabled={PROJECT_TARGET_OPTIONS.has(target) && sourceKind !== "gameProject"}>
                     {t(`export.target.${target}` as MessageKey)}
                   </option>
                 ))}
@@ -340,14 +460,47 @@ export function ExportCenterDialog({
                   onChange={(event) => updateOptions({ soundPackName: event.target.value })}
                 />
               ) : null}
+              {isProjectTarget ? (
+                <div className="project-export-options">
+                  {needsProjectEngineOptions ? (
+                    <label className="settings-row">
+                      {t("projectSoundPack.engineProfile" as MessageKey)}
+                      <select value={options.engineProfile ?? "generic"} onChange={(event) => updateOptions({ engineProfile: event.target.value as ProjectSoundPackEngineProfile })}>
+                        {ENGINE_OPTIONS.map((engine) => (
+                          <option key={engine} value={engine}>{t(`soundBoard.engine.${engine}` as MessageKey)}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {options.target === "project_sound_pack" ? (
+                    <>
+                      <input
+                        value={options.soundPackName}
+                        placeholder={t("export.soundPackName")}
+                        onChange={(event) => updateOptions({ soundPackName: event.target.value })}
+                      />
+                      <label className="settings-row">
+                        {t("projectSoundPack.filenamePolicy" as MessageKey)}
+                        <select value={options.filenamePolicy ?? "keep_original"} onChange={(event) => updateOptions({ filenamePolicy: event.target.value as ProjectSoundPackFilenamePolicy })}>
+                          {FILENAME_OPTIONS.map((policy) => (
+                            <option key={policy} value={policy}>{t(`projectSoundPack.filename.${policy}` as MessageKey)}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </section>
 
             <section className="export-section">
               <h3>{t("export.options")}</h3>
-              <label className="settings-toggle">
-                <input type="checkbox" checked={options.includeTrashed} onChange={(event) => updateOptions({ includeTrashed: event.target.checked })} />
-                {t("export.includeTrashed")}
-              </label>
+              {!isProjectTarget ? (
+                <label className="settings-toggle">
+                  <input type="checkbox" checked={options.includeTrashed} onChange={(event) => updateOptions({ includeTrashed: event.target.checked })} />
+                  {t("export.includeTrashed")}
+                </label>
+              ) : null}
               <label className="settings-toggle">
                 <input type="checkbox" checked={options.includeRights} onChange={(event) => updateOptions({ includeRights: event.target.checked })} />
                 {t("export.includeRights")}
@@ -356,23 +509,83 @@ export function ExportCenterDialog({
                 <input type="checkbox" checked={options.includeAbsolutePaths} onChange={(event) => updateOptions({ includeAbsolutePaths: event.target.checked })} />
                 {t("export.includeAbsolutePaths")}
               </label>
-              <label className="settings-toggle">
-                <input type="checkbox" checked={options.useSafeFilenames} onChange={(event) => updateOptions({ useSafeFilenames: event.target.checked })} />
-                {t("export.safeFilenames")}
-              </label>
-              <label className="settings-row">
-                {t("export.groupBy")}
-                <select value={options.groupBy} onChange={(event) => updateOptions({ groupBy: event.target.value as ExportOptions["groupBy"] })}>
-                  <option value="category">{t("export.group.category")}</option>
-                  <option value="tag">{t("export.group.tag")}</option>
-                  <option value="none">{t("export.group.none")}</option>
-                </select>
-              </label>
+              {!isProjectTarget ? (
+                <>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.useSafeFilenames} onChange={(event) => updateOptions({ useSafeFilenames: event.target.checked })} />
+                    {t("export.safeFilenames")}
+                  </label>
+                  <label className="settings-row">
+                    {t("export.groupBy")}
+                    <select value={options.groupBy} onChange={(event) => updateOptions({ groupBy: event.target.value as ExportOptions["groupBy"] })}>
+                      <option value="category">{t("export.group.category")}</option>
+                      <option value="tag">{t("export.group.tag")}</option>
+                      <option value="none">{t("export.group.none")}</option>
+                    </select>
+                  </label>
+                </>
+              ) : null}
               {options.target === "sound_pack_folder" ? (
                 <label className="settings-toggle">
                   <input type="checkbox" checked={options.copyAudioFiles} onChange={(event) => updateOptions({ copyAudioFiles: event.target.checked })} />
                   {t("export.copyAudioFiles")}
                 </label>
+              ) : null}
+              {isProjectTarget ? (
+                <>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeBoardSummary ?? true} onChange={(event) => updateOptions({ includeBoardSummary: event.target.checked })} />
+                    {t("export.includeBoardSummary")}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeValidationReport ?? true} onChange={(event) => updateOptions({ includeValidationReport: event.target.checked })} />
+                    {t("export.includeValidationReport")}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeCandidates ?? true} onChange={(event) => updateOptions({ includeCandidates: event.target.checked })} />
+                    {t("projectSoundPack.includeCandidates" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeRejectedCandidates ?? false} onChange={(event) => updateOptions({ includeRejectedCandidates: event.target.checked })} />
+                    {t("export.includeRejectedCandidates")}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeStyleGuide ?? true} onChange={(event) => updateOptions({ includeStyleGuide: event.target.checked })} />
+                    {t("export.includeStyleGuide" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeChecklist ?? true} onChange={(event) => updateOptions({ includeChecklist: event.target.checked })} />
+                    {t("export.includeChecklist" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeWorkNotes ?? false} onChange={(event) => updateOptions({ includeWorkNotes: event.target.checked })} />
+                    {t("export.includeWorkNotes" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeReviewNotes ?? false} onChange={(event) => updateOptions({ includeReviewNotes: event.target.checked })} />
+                    {t("export.includeReviewNotes" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeCandidateReviewNotes ?? false} onChange={(event) => updateOptions({ includeCandidateReviewNotes: event.target.checked })} />
+                    {t("export.includeCandidateReviewNotes" as MessageKey)}
+                  </label>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={options.includeDecisionNotes ?? false} onChange={(event) => updateOptions({ includeDecisionNotes: event.target.checked })} />
+                    {t("export.includeDecisionNotes" as MessageKey)}
+                  </label>
+                  {options.target === "project_sound_pack" ? (
+                    <>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.approvedOnly ?? true} onChange={(event) => updateOptions({ approvedOnly: event.target.checked, includeSelectedUnapproved: !event.target.checked })} />
+                        {t("export.approvedOnly")}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.copyAudioFiles} onChange={(event) => updateOptions({ copyAudioFiles: event.target.checked })} />
+                        {t("export.copyAudioFiles")}
+                      </label>
+                    </>
+                  ) : null}
+                </>
               ) : null}
             </section>
 
@@ -382,18 +595,44 @@ export function ExportCenterDialog({
               onApply={applyPreset}
               onSaved={refreshPresets}
             />
+
+            <section className="export-section">
+              <h3>{t("export.history")}</h3>
+              {history.length === 0 ? <p className="muted">{t("export.historyEmpty")}</p> : null}
+              <div className="export-history-list">
+                {history.map((item) => (
+                  <div key={item.id} className={`export-history-item ${item.status}`}>
+                    <span>{t(`export.target.${item.target}` as MessageKey)}</span>
+                    <small>{item.sourceLabel}</small>
+                    <small>{new Date(item.createdAt).toLocaleString()}</small>
+                    <button className="icon-button" type="button" onClick={() => void deleteHistory(item.id)} title={t("common.delete")} aria-label={t("common.delete")}>
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <ExportPreviewPanel
-            preview={preview}
-            previewText={previewText}
-            result={result}
-            warningsAcknowledged={warningsAcknowledged}
-            busy={busy}
-            onWarningsAcknowledgedChange={setWarningsAcknowledged}
-            onPreview={refreshPreview}
-            onRun={runExport}
-          />
+          <div className="export-preview-stack">
+            <ExportPreviewPanel
+              preview={preview}
+              previewText={previewText}
+              result={result}
+              warningsAcknowledged={warningsAcknowledged}
+              busy={busy}
+              onWarningsAcknowledgedChange={setWarningsAcknowledged}
+              onPreview={refreshPreview}
+              onRun={runExport}
+            />
+            {options.target === "project_sound_pack" ? (
+              <ProjectSoundPackPreview
+                preview={projectSoundPackPreview}
+                result={null}
+                onOpenOutput={(outputPath) => void window.suwolAudio.export.showOutputPath(outputPath)}
+              />
+            ) : null}
+          </div>
         </div>
       </section>
     </div>
@@ -416,5 +655,139 @@ function createDefaultOptions(selectedAssetIds: string[], currentQuery: AssetLis
     codexTemplate: "unity_import_plan",
     soundPackName: "exported-sound-pack",
     acknowledgeWarnings: false,
+    engineProfile: "generic",
+    filenamePolicy: "keep_original",
+    approvedOnly: true,
+    includeSelectedUnapproved: false,
+    includeCandidates: true,
+    includeRejectedCandidates: false,
+    includeMissingItems: true,
+    includeUsageNotes: true,
+    includeBoardSummary: true,
+    includeValidationReport: true,
+    includeMissingReport: true,
+    includeReadme: true,
+    includeCredits: true,
+    includeManifest: true,
+    includeStyleGuide: true,
+    includeChecklist: true,
+    includeWorkNotes: false,
+    includeReviewNotes: false,
+    includeCandidateReviewNotes: false,
+    includeDecisionNotes: false,
   };
+}
+
+function toProjectSoundPackOptions(options: ExportOptions): ProjectSoundPackOptions {
+  if (options.source.type !== "gameProject") {
+    return { projectId: "" };
+  }
+  return {
+    projectId: options.source.projectId,
+    usageItemIds: options.source.usageItemIds,
+    engineProfile: options.engineProfile,
+    soundPackName: options.soundPackName,
+    approvedOnly: options.approvedOnly,
+    includeSelectedUnapproved: options.includeSelectedUnapproved,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeMissingReport: options.includeMissingReport,
+    includeValidationReport: options.includeValidationReport,
+    includeRights: options.includeRights,
+    includeBoardSummary: options.includeBoardSummary,
+    includeReadme: options.includeReadme,
+    includeCredits: options.includeCredits,
+    includeManifest: options.includeManifest,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    copyAudioFiles: options.copyAudioFiles,
+    filenamePolicy: options.filenamePolicy,
+    acknowledgeWarnings: options.acknowledgeWarnings,
+  };
+}
+
+function toSoundRequestExportOptions(options: ExportOptions): SoundRequestExportOptions & { outputPath?: string } {
+  return {
+    projectId: options.source.type === "gameProject" ? options.source.projectId : "",
+    format: soundRequestFormatForTarget(options.target),
+    documentType: soundRequestDocumentForTarget(options.target),
+    usageItemIds: options.source.type === "gameProject" ? options.source.usageItemIds : undefined,
+    includeMissingItems: options.includeMissingItems,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    includeAbsolutePaths: options.includeAbsolutePaths,
+    includeRights: options.includeRights,
+  };
+}
+
+function soundRequestFormatForTarget(target: ExportTargetType): SoundRequestExportOptions["format"] {
+  if (target === "sound_request_csv") {
+    return "csv";
+  }
+  if (target === "sound_request_json") {
+    return "json";
+  }
+  return "markdown";
+}
+
+function soundRequestDocumentForTarget(target: ExportTargetType): SoundRequestExportOptions["documentType"] {
+  if (target === "project_style_guide_markdown") {
+    return "style_guide";
+  }
+  if (target === "project_checklist_markdown") {
+    return "checklist";
+  }
+  return "request";
+}
+
+function toSoundBoardExportOptions(options: ExportOptions): SoundBoardExportOptions & { outputPath?: string } {
+  return {
+    projectId: options.source.type === "gameProject" ? options.source.projectId : "",
+    format: projectFormatForTarget(options),
+    usageItemIds: options.source.type === "gameProject" ? options.source.usageItemIds : undefined,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeMissingItems: options.includeMissingItems,
+    includeUsageNotes: options.includeUsageNotes,
+    includeRights: options.includeRights,
+    includeAbsolutePaths: options.includeAbsolutePaths,
+    includeBoardSummary: options.includeBoardSummary,
+    includeValidationReport: options.includeValidationReport,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    selectedOnly: options.source.type === "gameProject" && Boolean(options.source.usageItemIds?.length),
+  };
+}
+
+function projectFormatForTarget(options: ExportOptions): SoundBoardExportFormat {
+  if (options.target === "project_missing_report") {
+    return "missing_report";
+  }
+  if (options.target === "project_codex_instruction") {
+    return "codex_instruction";
+  }
+  if (options.engineProfile === "unity") {
+    return "unity_manifest";
+  }
+  if (options.engineProfile === "unreal") {
+    return "unreal_manifest";
+  }
+  if (options.engineProfile === "monogame") {
+    return "monogame_manifest";
+  }
+  return "generic_manifest";
 }

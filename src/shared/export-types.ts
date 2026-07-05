@@ -1,4 +1,5 @@
 import type { AssetListItem, AssetListQuery, SmartFolderId } from "./library-types";
+import type { GameEngineType, GameProjectRecord, SoundBoardSummary } from "./sound-board-types";
 
 export type ExportTargetType =
   | "codex_markdown"
@@ -11,7 +12,16 @@ export type ExportTargetType =
   | "monogame_content"
   | "sound_pack_metadata"
   | "sound_pack_folder"
-  | "csv_report";
+  | "csv_report"
+  | "project_sound_pack"
+  | "project_manifest"
+  | "project_missing_report"
+  | "project_codex_instruction"
+  | "sound_request_markdown"
+  | "sound_request_csv"
+  | "sound_request_json"
+  | "project_style_guide_markdown"
+  | "project_checklist_markdown";
 
 export type ExportPresetType =
   | "codex_instruction"
@@ -20,7 +30,16 @@ export type ExportPresetType =
   | "unreal_manifest"
   | "monogame_manifest"
   | "sound_pack"
-  | "csv_report";
+  | "csv_report"
+  | "project_sound_pack"
+  | "project_manifest"
+  | "project_missing_report"
+  | "project_codex_instruction"
+  | "sound_request_markdown"
+  | "sound_request_csv"
+  | "sound_request_json"
+  | "project_style_guide_markdown"
+  | "project_checklist_markdown";
 
 export type ExportSource =
   | { type: "selected"; assetIds: string[] }
@@ -28,6 +47,7 @@ export type ExportSource =
   | { type: "collection"; collectionId: string; name?: string }
   | { type: "tag"; tagId: string; name?: string }
   | { type: "smartFolder"; smartFolder: SmartFolderId; name?: string }
+  | { type: "gameProject"; projectId: string; name?: string; usageItemIds?: string[]; label?: string }
   | { type: "library" };
 
 export type CodexInstructionTemplate =
@@ -45,6 +65,8 @@ export type ExportGrouping = "none" | "category" | "tag";
 export type ExportValidationSeverity = "info" | "warning" | "error";
 export type CommercialUseStatus = "unknown" | "allowed" | "not_allowed" | "check_required";
 export type CreditRequiredStatus = "unknown" | "yes" | "no";
+export type ExportHistoryStatus = "success" | "failure";
+export type ProjectExportFilenamePolicy = "keep_original" | "usage_key" | "category_usage_key";
 
 export interface AssetRightsMetadata {
   assetId: string;
@@ -91,6 +113,26 @@ export interface ExportOptions {
   codexTemplate: CodexInstructionTemplate;
   soundPackName: string;
   acknowledgeWarnings?: boolean;
+  engineProfile?: GameEngineType;
+  filenamePolicy?: ProjectExportFilenamePolicy;
+  approvedOnly?: boolean;
+  includeSelectedUnapproved?: boolean;
+  includeCandidates?: boolean;
+  includeRejectedCandidates?: boolean;
+  includeMissingItems?: boolean;
+  includeUsageNotes?: boolean;
+  includeBoardSummary?: boolean;
+  includeValidationReport?: boolean;
+  includeMissingReport?: boolean;
+  includeReadme?: boolean;
+  includeCredits?: boolean;
+  includeManifest?: boolean;
+  includeStyleGuide?: boolean;
+  includeChecklist?: boolean;
+  includeWorkNotes?: boolean;
+  includeReviewNotes?: boolean;
+  includeCandidateReviewNotes?: boolean;
+  includeDecisionNotes?: boolean;
 }
 
 export interface ExportValidationIssue {
@@ -105,7 +147,10 @@ export interface ExportValidationIssue {
     | "CREDIT_MISSING"
     | "LOOP_FLAG_MISMATCH"
     | "ABSOLUTE_PATH_INCLUDED"
-    | "EXPORT_TARGET_EXISTS";
+    | "EXPORT_TARGET_EXISTS"
+    | "EXPORT_TYPE_SOURCE_MISMATCH"
+    | "PROJECT_NOT_FOUND"
+    | "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
   message: string;
   assetId?: string;
   fileName?: string;
@@ -113,7 +158,7 @@ export interface ExportValidationIssue {
 
 export interface PlannedExportFile {
   path: string;
-  kind: "manifest" | "markdown" | "json" | "csv" | "text" | "audio" | "metadata";
+  kind: "manifest" | "markdown" | "json" | "csv" | "text" | "audio" | "metadata" | "report";
   assetId?: string;
 }
 
@@ -161,6 +206,34 @@ export interface ExportPresetInput {
   name: string;
   type: ExportPresetType;
   config: Partial<ExportOptions>;
+}
+
+export interface ProjectExportSourceSummary {
+  project: GameProjectRecord;
+  summary: SoundBoardSummary;
+  validationOk: boolean;
+  riskCount: number;
+}
+
+export interface ExportHistoryRecord {
+  id: string;
+  libraryId: string;
+  createdAt: string;
+  status: ExportHistoryStatus;
+  target: ExportTargetType;
+  sourceLabel: string;
+  outputPath: string | null;
+  files: string[];
+  summary: ExportRunSummary;
+  errorCode: string | null;
+  errorMessage: string | null;
+  options: Partial<ExportOptions>;
+}
+
+export interface ExportHistoryListQuery {
+  limit?: number;
+  target?: ExportTargetType;
+  projectId?: string;
 }
 
 export interface ExportAssetContext {

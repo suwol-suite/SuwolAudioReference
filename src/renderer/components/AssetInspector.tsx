@@ -1,8 +1,10 @@
-import { Copy, FileOutput, Heart, RefreshCw, Save, Star } from "lucide-react";
+import { Copy, FileOutput, Heart, Link2, RefreshCw, Save, Star } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import type { AudioAnalysisResult } from "../../shared/audio-analysis-types";
 import type { AssetRightsMetadata } from "../../shared/export-types";
 import type { AssetListItem, CollectionRecord, TagRecord } from "../../shared/library-types";
+import type { SoundUsageAssetLink } from "../../shared/sound-board-types";
+import { AddToUsageDialog } from "./AddToUsageDialog";
 import { AudioAnalysisRecommendations } from "./AudioAnalysisRecommendations";
 import type { PlayerSnapshot } from "./AudioPlayerBar";
 import { SimilarSoundsPanel } from "./SimilarSoundsPanel";
@@ -22,6 +24,7 @@ interface AssetInspectorProps {
   onRefresh: () => Promise<void>;
   onPlayAsset: (assetId: string) => Promise<void> | void;
   onCompareAsset: (assetId: string) => Promise<void> | void;
+  onOpenSoundBoard: () => void;
 }
 
 export function AssetInspector({
@@ -32,6 +35,7 @@ export function AssetInspector({
   onRefresh,
   onPlayAsset,
   onCompareAsset,
+  onOpenSoundBoard,
 }: AssetInspectorProps): JSX.Element {
   const { locale, t, format } = useI18n();
   const { showToast } = useToast();
@@ -41,14 +45,18 @@ export function AssetInspector({
   const [busy, setBusy] = useState(false);
   const [rights, setRights] = useState<AssetRightsMetadata | null>(null);
   const [rightsBusy, setRightsBusy] = useState(false);
+  const [usageLinks, setUsageLinks] = useState<SoundUsageAssetLink[]>([]);
+  const [addToUsageOpen, setAddToUsageOpen] = useState(false);
 
   useEffect(() => {
     setTitle(asset?.title ?? "");
     setMemo(asset?.memo ?? "");
     setCollectionId("");
     setRights(null);
+    setUsageLinks([]);
     if (asset) {
       void window.suwolAudio.rights.get(asset.id).then(setRights);
+      void loadUsageLinks(asset.id);
     }
   }, [asset?.id]);
 
@@ -139,6 +147,10 @@ export function AssetInspector({
   async function exportSidecar(): Promise<void> {
     const result = await window.suwolAudio.assets.exportSidecars({ assetIds: [currentAsset.id], overwrite: false });
     showToast(result.failed > 0 ? "warning" : "success", t("management.sidecarComplete", { count: format.number(result.success) }));
+  }
+
+  async function loadUsageLinks(assetId = currentAsset.id): Promise<void> {
+    setUsageLinks(await window.suwolAudio.usage.getAssetLinks(assetId));
   }
 
   async function copyText(label: string, value: string): Promise<void> {
@@ -302,6 +314,33 @@ export function AssetInspector({
         />
       </InspectorSection>
 
+      <InspectorSection title={t("soundBoard.linkedUsageItems" as MessageKey)}>
+        <div className="inspector-action-row">
+          <button className="secondary-button compact" type="button" onClick={() => setAddToUsageOpen(true)}>
+            <Link2 size={14} aria-hidden="true" />
+            {t("soundBoard.addToUsage" as MessageKey)}
+          </button>
+        </div>
+        {usageLinks.length === 0 ? <p className="muted">{t("soundBoard.noLinkedUsageItems" as MessageKey)}</p> : null}
+        <div className="usage-link-list">
+          {usageLinks.map((link) => (
+            <div key={link.candidateId} className={link.selected ? "usage-link-row is-selected" : "usage-link-row"}>
+              <strong>{link.usageKey}</strong>
+              <span>{link.projectName} / {link.displayName}</span>
+              <small>
+                {link.selected ? t("soundBoard.usedAsSelected" as MessageKey) : t("soundBoard.usedAsCandidate" as MessageKey)}
+                {" / "}
+                {link.approved ? t("soundBoard.approved" as MessageKey) : t(`soundBoard.status.${link.status}` as MessageKey)}
+                {link.rejected ? ` / ${t("soundBoard.rejected" as MessageKey)}` : ""}
+              </small>
+              <button className="secondary-button compact" type="button" onClick={onOpenSoundBoard}>
+                {t("soundBoard.openBoard" as MessageKey)}
+              </button>
+            </div>
+          ))}
+        </div>
+      </InspectorSection>
+
       <InspectorSection title={t("rights.title")}>
         {rights ? (
           <>
@@ -379,6 +418,12 @@ export function AssetInspector({
           </button>
         </div>
       </InspectorSection>
+      <AddToUsageDialog
+        open={addToUsageOpen}
+        asset={currentAsset}
+        onClose={() => setAddToUsageOpen(false)}
+        onDone={() => loadUsageLinks(currentAsset.id)}
+      />
     </aside>
   );
 }

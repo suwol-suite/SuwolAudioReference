@@ -29,8 +29,9 @@ import { CollectionPanel } from "./CollectionPanel";
 import { ComparePanel } from "./ComparePanel";
 import { SearchFilterBar } from "./SearchFilterBar";
 import { ShortcutHelpDialog } from "./ShortcutHelpDialog";
+import { SoundUsageBoardDialog } from "./SoundUsageBoard";
 import { TrashView } from "./TrashView";
-import { ExportCenterDialog } from "./ExportCenterDialog";
+import { ExportCenterDialog, type ExportCenterInitialOptions } from "./ExportCenterDialog";
 import { EmptyState } from "./ui/EmptyState";
 import { useConfirm } from "./ui/ConfirmDialog";
 import { useToast } from "./ui/ToastProvider";
@@ -75,6 +76,8 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
   const [lastCompareSlot, setLastCompareSlot] = useState(1);
   const [searchFocusKey, setSearchFocusKey] = useState(0);
   const [exportCenterOpen, setExportCenterOpen] = useState(false);
+  const [exportCenterInitialOptions, setExportCenterInitialOptions] = useState<ExportCenterInitialOptions | null>(null);
+  const [soundBoardOpen, setSoundBoardOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [assetPage, setAssetPage] = useState(1);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -379,6 +382,26 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
     setComparePairStart(selection.comparePairStart);
   }
 
+  async function compareSoundBoardAssets(assetIds: string[]): Promise<void> {
+    const uniqueIds = Array.from(new Set(assetIds)).slice(0, 2);
+    if (uniqueIds.length < 2) {
+      return;
+    }
+    const loadedAssets = (await Promise.all(uniqueIds.map((assetId) => window.suwolAudio.assets.get(assetId)))).filter(
+      (asset): asset is AssetListItem => asset !== null,
+    );
+    if (loadedAssets.length < 2) {
+      return;
+    }
+    setAssets((current) => {
+      const withoutCompared = current.filter((asset) => !uniqueIds.includes(asset.id));
+      return [...loadedAssets, ...withoutCompared];
+    });
+    setSelectedIds(new Set(uniqueIds));
+    setSelectedAssetId(uniqueIds[0] ?? null);
+    setComparePairStart(0);
+  }
+
   async function updateSelectedAssets(input: { rating?: number; favorite?: boolean }): Promise<void> {
     const ids = selectedIds.size > 0 ? Array.from(selectedIds) : selectedAssetId ? [selectedAssetId] : [];
     for (const assetId of ids) {
@@ -465,6 +488,7 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
           onImport={importFiles}
           onRefresh={refreshAll}
           onExport={() => setExportCenterOpen(true)}
+          onSoundBoard={() => setSoundBoardOpen(true)}
           onSettingsChanged={setSettings}
         />
 
@@ -537,10 +561,14 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
         tags={snapshot.tags}
         collections={snapshot.collections}
         playbackState={playbackState}
-        onExportAsset={() => setExportCenterOpen(true)}
+        onExportAsset={() => {
+          setExportCenterInitialOptions(null);
+          setExportCenterOpen(true);
+        }}
         onRefresh={refreshAll}
         onPlayAsset={playRelatedAsset}
         onCompareAsset={compareWithRelatedAsset}
+        onOpenSoundBoard={() => setSoundBoardOpen(true)}
       />
 
       <BatchActionBar
@@ -548,7 +576,10 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
         tags={snapshot.tags}
         collections={snapshot.collections}
         onlyTrashed={filters.onlyTrashed}
-        onExport={() => setExportCenterOpen(true)}
+        onExport={() => {
+          setExportCenterInitialOptions(null);
+          setExportCenterOpen(true);
+        }}
         onDone={refreshAll}
       />
 
@@ -558,7 +589,21 @@ export function AssetBrowser({ initialSnapshot, onSnapshotChange, menuImportSign
         currentQuery={toAssetListQuery(filters, sort)}
         tags={snapshot.tags}
         collections={snapshot.collections}
+        initialOptions={exportCenterInitialOptions}
         onClose={() => setExportCenterOpen(false)}
+      />
+
+      <SoundUsageBoardDialog
+        open={soundBoardOpen}
+        selectedAssetId={selectedAssetId}
+        selectedAssetIds={selectedIdList}
+        onClose={() => setSoundBoardOpen(false)}
+        onPlayAsset={playRelatedAsset}
+        onCompareAssets={compareSoundBoardAssets}
+        onOpenExportCenter={(initialOptions) => {
+          setExportCenterInitialOptions(initialOptions);
+          setExportCenterOpen(true);
+        }}
       />
 
       <ShortcutHelpDialog open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} />

@@ -102,6 +102,18 @@ function inferPresetType(target: ExportOptions["target"] | undefined): ExportPre
   if (target === "sound_pack_folder" || target === "sound_pack_metadata") {
     return "sound_pack";
   }
+  if (target === "project_sound_pack") {
+    return "project_sound_pack";
+  }
+  if (target === "project_manifest") {
+    return "project_manifest";
+  }
+  if (target === "project_missing_report") {
+    return "project_missing_report";
+  }
+  if (target === "project_codex_instruction") {
+    return "project_codex_instruction";
+  }
   if (target === "csv_report") {
     return "csv_report";
   }

@@ -6,6 +6,8 @@ import type {
   AssetRightsInput,
   AssetRightsMetadata,
   CodexInstructionPreviewInput,
+  ExportHistoryListQuery,
+  ExportHistoryRecord,
   ExportOptions,
   ExportPresetInput,
   ExportPresetRecord,
@@ -16,7 +18,18 @@ import type {
   ExportTargetType,
   ExportValidationIssue,
   ManifestPreviewInput,
+  PlannedExportFile,
+  ProjectExportSourceSummary,
 } from "../../shared/export-types";
+import type { ProjectSoundPackDryRun, ProjectSoundPackExportResult, ProjectSoundPackOptions } from "../../shared/project-sound-pack-types";
+import type {
+  SoundBoardExportOptions,
+  SoundBoardExportPreview,
+  SoundBoardExportResult,
+  SoundRequestExportOptions,
+  SoundRequestExportPreview,
+  SoundRequestExportResult,
+} from "../../shared/sound-board-types";
 import type { LibraryService } from "./library-service";
 import type { AssetService } from "./asset-service";
 import { createBatchResult, recordFailure, recordSuccess } from "./batch-result";
@@ -27,6 +40,11 @@ import {
   sanitizeEngineKey,
   toCsv,
 } from "./game-audio-manifest-service";
+import type { GameProjectService } from "./game-project-service";
+import type { ProjectSoundPackService } from "./project-sound-pack-service";
+import type { SoundBoardExportService } from "./sound-board-export-service";
+import type { SoundBoardValidationService } from "./sound-board-validation-service";
+import type { SoundRequestExportService } from "./sound-request-export-service";
 import { safeSoundPackFolderName, SoundPackExportService } from "./sound-pack-export-service";
 
 interface RightsRow {
@@ -54,6 +72,21 @@ interface PresetRow {
   updated_at: string;
 }
 
+interface ExportHistoryRow {
+  id: string;
+  library_id: string;
+  created_at: string;
+  status: "success" | "failure";
+  target: ExportTargetType;
+  source_label: string;
+  output_path: string | null;
+  files_json: string;
+  summary_json: string;
+  error_code: string | null;
+  error_message: string | null;
+  options_json: string;
+}
+
 interface PreparedExport {
   library: LibraryRecord;
   assets: AssetListItem[];
@@ -78,7 +111,39 @@ const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   codexTemplate: "unity_import_plan",
   soundPackName: "exported-sound-pack",
   acknowledgeWarnings: false,
+  engineProfile: "generic",
+  filenamePolicy: "keep_original",
+  approvedOnly: true,
+  includeSelectedUnapproved: false,
+  includeCandidates: true,
+  includeRejectedCandidates: false,
+  includeMissingItems: true,
+  includeUsageNotes: true,
+  includeBoardSummary: true,
+  includeValidationReport: true,
+  includeMissingReport: true,
+  includeReadme: true,
+  includeCredits: true,
+  includeManifest: true,
+  includeStyleGuide: true,
+  includeChecklist: true,
+  includeWorkNotes: false,
+  includeReviewNotes: false,
+  includeCandidateReviewNotes: false,
+  includeDecisionNotes: false,
 };
+
+const PROJECT_EXPORT_TARGETS = new Set<ExportTargetType>([
+  "project_sound_pack",
+  "project_manifest",
+  "project_missing_report",
+  "project_codex_instruction",
+  "sound_request_markdown",
+  "sound_request_csv",
+  "sound_request_json",
+  "project_style_guide_markdown",
+  "project_checklist_markdown",
+]);
 
 const BUILT_IN_PRESETS: ExportPresetRecord[] = [
   {
@@ -111,6 +176,111 @@ const BUILT_IN_PRESETS: ExportPresetRecord[] = [
     createdAt: "",
     updatedAt: "",
   },
+  {
+    id: "built-in-project-sound-pack-unity",
+    libraryId: null,
+    name: "Unity Approved Project Sound Pack",
+    type: "project_sound_pack",
+    config: {
+      target: "project_sound_pack",
+      engineProfile: "unity",
+      filenamePolicy: "usage_key",
+      approvedOnly: true,
+      includeSelectedUnapproved: false,
+      includeCandidates: false,
+      includeRights: true,
+      includeBoardSummary: true,
+      includeValidationReport: true,
+      includeMissingReport: true,
+      copyAudioFiles: true,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-project-manifest-unreal",
+    libraryId: null,
+    name: "Unreal Project Manifest",
+    type: "project_manifest",
+    config: {
+      target: "project_manifest",
+      engineProfile: "unreal",
+      includeCandidates: true,
+      includeMissingItems: true,
+      includeRights: true,
+      includeBoardSummary: true,
+      includeValidationReport: true,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-project-missing-report",
+    libraryId: null,
+    name: "Project Missing Report",
+    type: "project_missing_report",
+    config: { target: "project_missing_report", includeMissingItems: true, includeBoardSummary: true },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-project-codex-instruction",
+    libraryId: null,
+    name: "Codex Sound Board Instruction",
+    type: "project_codex_instruction",
+    config: {
+      target: "project_codex_instruction",
+      includeCandidates: true,
+      includeMissingItems: true,
+      includeUsageNotes: true,
+      includeBoardSummary: true,
+      includeValidationReport: true,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-sound-request-markdown",
+    libraryId: null,
+    name: "Sound Request Markdown",
+    type: "sound_request_markdown",
+    config: {
+      target: "sound_request_markdown",
+      includeStyleGuide: true,
+      includeChecklist: true,
+      includeWorkNotes: false,
+      includeReviewNotes: false,
+      includeCandidateReviewNotes: false,
+      includeDecisionNotes: false,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-project-style-guide",
+    libraryId: null,
+    name: "Project Style Guide Markdown",
+    type: "project_style_guide_markdown",
+    config: { target: "project_style_guide_markdown", includeStyleGuide: true },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "built-in-project-checklist",
+    libraryId: null,
+    name: "Project Checklist Markdown",
+    type: "project_checklist_markdown",
+    config: { target: "project_checklist_markdown", includeChecklist: true },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
 ];
 
 export class ExportCenterService {
@@ -121,10 +291,21 @@ export class ExportCenterService {
   constructor(
     private readonly libraryService: LibraryService,
     private readonly assetService: AssetService,
+    private readonly projectSoundPackService?: ProjectSoundPackService,
+    private readonly soundBoardExportService?: SoundBoardExportService,
+    private readonly gameProjectService?: GameProjectService,
+    private readonly soundBoardValidationService?: SoundBoardValidationService,
+    private readonly soundRequestExportService?: SoundRequestExportService,
   ) {}
 
   async preview(input: Partial<ExportOptions>, outputDirectory?: string): Promise<ExportPreview> {
     const options = normalizeExportOptions(input);
+    if (isProjectExportTarget(options.target)) {
+      return this.previewProjectExport(options, outputDirectory);
+    }
+    if (options.source.type === "gameProject") {
+      return createSourceMismatchPreview(options, "Project sources require a project export target.");
+    }
     const prepared = await this.prepare(options, outputDirectory);
     return {
       ok: prepared.issues.every((issue) => issue.severity !== "error"),
@@ -138,14 +319,32 @@ export class ExportCenterService {
 
   async run(input: Partial<ExportOptions>, outputDirectory: string): Promise<ExportRunResult> {
     const options = normalizeExportOptions(input);
+    if (isProjectExportTarget(options.target)) {
+      return this.runProjectExport(options, outputDirectory);
+    }
+    if (options.source.type === "gameProject") {
+      return this.recordHistorySafe(
+        options,
+        this.createSourceLabel(options.source),
+        createFailedRunResult(0, "EXPORT_TYPE_SOURCE_MISMATCH", "Project sources require a project export target."),
+      );
+    }
     const prepared = await this.prepare(options, outputDirectory);
     const errors = prepared.issues.filter((issue) => issue.severity === "error");
     const warnings = prepared.issues.filter((issue) => issue.severity === "warning").map((issue) => issue.message);
     if (errors.length > 0) {
-      return createFailedRunResult(prepared.assets.length, "EXPORT_RUN_FAILED", errors[0]?.message ?? "Export failed");
+      return this.recordHistorySafe(
+        options,
+        prepared.sourceLabel,
+        createFailedRunResult(prepared.assets.length, "EXPORT_RUN_FAILED", errors[0]?.message ?? "Export failed"),
+      );
     }
     if (warnings.length > 0 && !options.acknowledgeWarnings) {
-      return createFailedRunResult(prepared.assets.length, "EXPORT_RUN_FAILED", "Warnings must be acknowledged before export.");
+      return this.recordHistorySafe(
+        options,
+        prepared.sourceLabel,
+        createFailedRunResult(prepared.assets.length, "EXPORT_RUN_FAILED", "Warnings must be acknowledged before export."),
+      );
     }
 
     await mkdir(outputDirectory, { recursive: true });
@@ -167,18 +366,27 @@ export class ExportCenterService {
           includeRights: options.includeRights,
         });
         result.summary.warnings.unshift(...warnings);
-        return { ok: result.summary.failed === 0, outputPath: result.outputPath, files: result.files, summary: result.summary };
+        return this.recordHistorySafe(options, prepared.sourceLabel, {
+          ok: result.summary.failed === 0,
+          outputPath: result.outputPath,
+          files: result.files,
+          summary: result.summary,
+        });
       }
 
       const { fileName, content } = this.renderTarget(prepared, options);
       const outputPath = await writeUniqueTextFile(outputDirectory, fileName, content);
-      return { ok: true, outputPath, files: [outputPath], summary };
+      return this.recordHistorySafe(options, prepared.sourceLabel, { ok: true, outputPath, files: [outputPath], summary });
     } catch (error) {
-      return createFailedRunResult(
-        prepared.assets.length,
-        "EXPORT_WRITE_FAILED",
-        error instanceof Error ? error.message : String(error),
-        warnings,
+      return this.recordHistorySafe(
+        options,
+        prepared.sourceLabel,
+        createFailedRunResult(
+          prepared.assets.length,
+          "EXPORT_WRITE_FAILED",
+          error instanceof Error ? error.message : String(error),
+          warnings,
+        ),
       );
     }
   }
@@ -326,6 +534,187 @@ export class ExportCenterService {
     return result;
   }
 
+  async listProjectSources(): Promise<ProjectExportSourceSummary[]> {
+    if (!this.gameProjectService) {
+      return [];
+    }
+    const projects = this.gameProjectService.listProjects(false);
+    const sources: ProjectExportSourceSummary[] = [];
+    for (const project of projects) {
+      const summary = this.gameProjectService.getSummary(project.id);
+      const validation = this.soundBoardValidationService
+        ? await this.soundBoardValidationService.validateBoard(project.id)
+        : null;
+      sources.push({
+        project,
+        summary,
+        validationOk: validation?.ok ?? summary.requiredMissing === 0,
+        riskCount: validation?.dashboard.risks ?? summary.requiredMissing + summary.noCandidates,
+      });
+    }
+    return sources;
+  }
+
+  listHistory(query: ExportHistoryListQuery = {}): ExportHistoryRecord[] {
+    const context = this.libraryService.requireActive();
+    const limit = Math.max(1, Math.min(200, query.limit ?? 30));
+    const where = ["library_id = ?"];
+    const params: Array<string | number> = [context.library.id];
+    if (query.target) {
+      where.push("target = ?");
+      params.push(query.target);
+    }
+    if (query.projectId) {
+      where.push("project_id = ?");
+      params.push(query.projectId);
+    }
+    const rows = context.db.all<ExportHistoryRow>(
+      `
+      SELECT *
+      FROM export_history
+      WHERE ${where.join(" AND ")}
+      ORDER BY created_at DESC
+      LIMIT ?
+      `,
+      [...params, limit],
+    );
+    return rows.map(mapHistoryRow);
+  }
+
+  getHistory(historyId: string): ExportHistoryRecord | null {
+    const context = this.libraryService.requireActive();
+    const row = context.db.get<ExportHistoryRow>("SELECT * FROM export_history WHERE id = ? AND library_id = ?", [
+      historyId,
+      context.library.id,
+    ]);
+    return row ? mapHistoryRow(row) : null;
+  }
+
+  deleteHistory(historyId: string): BatchResult {
+    const context = this.libraryService.requireActive();
+    const result = createBatchResult(1);
+    context.db.run("DELETE FROM export_history WHERE id = ? AND library_id = ?", [historyId, context.library.id]);
+    recordSuccess(result);
+    return result;
+  }
+
+  private async previewProjectExport(options: ExportOptions, outputDirectory?: string): Promise<ExportPreview> {
+    if (options.source.type !== "gameProject") {
+      return createSourceMismatchPreview(options, "Project export targets require a game project source.");
+    }
+    try {
+      if (options.target === "project_sound_pack") {
+        const dryRun = await this.requireProjectSoundPackService().preview(toProjectSoundPackOptions(options), outputDirectory);
+        return mapProjectSoundPackPreview(options, dryRun);
+      }
+      if (isSoundRequestTarget(options.target)) {
+        const requestPreview = await this.requireSoundRequestExportService().preview(toSoundRequestExportOptions(options), outputDirectory);
+        return mapSoundRequestPreview(options, requestPreview);
+      }
+      const boardPreview = await this.requireSoundBoardExportService().preview(toSoundBoardExportOptions(options), outputDirectory);
+      return mapSoundBoardPreview(options, boardPreview);
+    } catch (error) {
+      return {
+        ok: false,
+        target: options.target,
+        assetCount: 0,
+        exportSourceLabel: this.createSourceLabel(options.source),
+        issues: [
+          {
+            severity: "error",
+            code: error instanceof Error && error.message === "PROJECT_NOT_FOUND" ? "PROJECT_NOT_FOUND" : "EXPORT_TYPE_SOURCE_MISMATCH",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        ],
+        plannedFiles: [],
+      };
+    }
+  }
+
+  private async runProjectExport(options: ExportOptions, outputDirectory: string): Promise<ExportRunResult> {
+    const sourceLabel = this.createSourceLabel(options.source);
+    if (options.source.type !== "gameProject") {
+      return this.recordHistorySafe(
+        options,
+        sourceLabel,
+        createFailedRunResult(0, "EXPORT_TYPE_SOURCE_MISMATCH", "Project export targets require a game project source."),
+      );
+    }
+    try {
+      const result = options.target === "project_sound_pack"
+        ? mapProjectSoundPackResult(await this.requireProjectSoundPackService().export(toProjectSoundPackOptions(options), outputDirectory))
+        : isSoundRequestTarget(options.target)
+          ? mapSoundRequestResult(await this.requireSoundRequestExportService().export(toSoundRequestExportOptions(options), outputDirectory))
+          : mapSoundBoardResult(await this.requireSoundBoardExportService().run(toSoundBoardExportOptions(options), outputDirectory));
+      return this.recordHistorySafe(options, sourceLabel, result);
+    } catch (error) {
+      return this.recordHistorySafe(
+        options,
+        sourceLabel,
+        createFailedRunResult(0, "EXPORT_RUN_FAILED", error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
+
+  private requireProjectSoundPackService(): ProjectSoundPackService {
+    if (!this.projectSoundPackService) {
+      throw new Error("Project sound pack service is not available.");
+    }
+    return this.projectSoundPackService;
+  }
+
+  private requireSoundBoardExportService(): SoundBoardExportService {
+    if (!this.soundBoardExportService) {
+      throw new Error("Sound board export service is not available.");
+    }
+    return this.soundBoardExportService;
+  }
+
+  private requireSoundRequestExportService(): SoundRequestExportService {
+    if (!this.soundRequestExportService) {
+      throw new Error("Sound request export service is not available.");
+    }
+    return this.soundRequestExportService;
+  }
+
+  private recordHistorySafe(options: ExportOptions, sourceLabel: string, result: ExportRunResult): ExportRunResult {
+    try {
+      this.recordHistory(options, sourceLabel, result);
+    } catch (error) {
+      result.summary.warnings.push(`Export history could not be saved: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return result;
+  }
+
+  private recordHistory(options: ExportOptions, sourceLabel: string, result: ExportRunResult): void {
+    const context = this.libraryService.requireActive();
+    const now = new Date().toISOString();
+    context.db.run(
+      `
+      INSERT INTO export_history (
+        id, library_id, created_at, status, target, source_label, output_path,
+        files_json, summary_json, error_code, error_message, options_json, project_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        randomUUID(),
+        context.library.id,
+        now,
+        result.ok ? "success" : "failure",
+        options.target,
+        sourceLabel,
+        result.outputPath ?? null,
+        JSON.stringify(result.files),
+        JSON.stringify(result.summary),
+        result.error?.code ?? null,
+        result.error?.message ?? null,
+        JSON.stringify(options),
+        options.source.type === "gameProject" ? options.source.projectId : null,
+      ],
+    );
+  }
+
   private async prepare(options: ExportOptions, outputDirectory?: string): Promise<PreparedExport> {
     const context = this.libraryService.requireActive();
     const assets = await this.resolveAssets(options.source, options.includeTrashed);
@@ -398,6 +787,14 @@ export class ExportCenterService {
     }
     if (source.type === "selected") {
       return `${source.assetIds.length} selected assets`;
+    }
+    if (source.type === "gameProject") {
+      return (
+        source.label ??
+        source.name ??
+        this.gameProjectService?.getProject(source.projectId)?.name ??
+        source.projectId
+      );
     }
     return "whole library";
   }
@@ -731,6 +1128,24 @@ function fileNameForTarget(target: ExportTargetType): string {
       return "sound-pack-metadata.json";
     case "csv_report":
       return "suwol-audio-report.csv";
+    case "project_sound_pack":
+      return "project-sound-pack";
+    case "project_manifest":
+      return "project-audio-manifest.json";
+    case "project_missing_report":
+      return "project-missing-sounds.md";
+    case "project_codex_instruction":
+      return "project-codex-instruction.md";
+    case "sound_request_markdown":
+      return "suwol-sound-request.md";
+    case "sound_request_csv":
+      return "suwol-sound-request.csv";
+    case "sound_request_json":
+      return "suwol-sound-request.json";
+    case "project_style_guide_markdown":
+      return "project-style-guide.md";
+    case "project_checklist_markdown":
+      return "project-checklist.md";
     case "generic_manifest":
     default:
       return "suwol-audio-manifest.json";
@@ -738,11 +1153,21 @@ function fileNameForTarget(target: ExportTargetType): string {
 }
 
 function kindForTarget(target: ExportTargetType): ExportPreview["plannedFiles"][number]["kind"] {
-  if (target === "codex_markdown") {
+  if (
+    target === "codex_markdown" ||
+    target === "project_codex_instruction" ||
+    target === "project_missing_report" ||
+    target === "sound_request_markdown" ||
+    target === "project_style_guide_markdown" ||
+    target === "project_checklist_markdown"
+  ) {
     return "markdown";
   }
-  if (target === "unreal_csv" || target === "csv_report") {
+  if (target === "unreal_csv" || target === "csv_report" || target === "sound_request_csv") {
     return "csv";
+  }
+  if (target === "sound_request_json") {
+    return "json";
   }
   if (target === "monogame_content") {
     return "text";
@@ -806,4 +1231,354 @@ function parseJson<T>(value: string): T | null {
   } catch {
     return null;
   }
+}
+
+function isProjectExportTarget(target: ExportTargetType): boolean {
+  return PROJECT_EXPORT_TARGETS.has(target);
+}
+
+function isSoundRequestTarget(target: ExportTargetType): boolean {
+  return (
+    target === "sound_request_markdown" ||
+    target === "sound_request_csv" ||
+    target === "sound_request_json" ||
+    target === "project_style_guide_markdown" ||
+    target === "project_checklist_markdown"
+  );
+}
+
+function createSourceMismatchPreview(options: ExportOptions, message: string): ExportPreview {
+  return {
+    ok: false,
+    target: options.target,
+    assetCount: 0,
+    exportSourceLabel: options.source.type === "gameProject" ? options.source.name ?? options.source.projectId : "unsupported source",
+    issues: [{ severity: "error", code: "EXPORT_TYPE_SOURCE_MISMATCH", message }],
+    plannedFiles: [],
+  };
+}
+
+function toProjectSoundPackOptions(options: ExportOptions): ProjectSoundPackOptions {
+  const source = options.source.type === "gameProject" ? options.source : null;
+  return {
+    projectId: source?.projectId ?? "",
+    usageItemIds: source?.usageItemIds,
+    engineProfile: options.engineProfile,
+    soundPackName: options.soundPackName,
+    approvedOnly: options.approvedOnly,
+    includeSelectedUnapproved: options.includeSelectedUnapproved,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeMissingReport: options.includeMissingReport,
+    includeValidationReport: options.includeValidationReport,
+    includeRights: options.includeRights,
+    includeBoardSummary: options.includeBoardSummary,
+    includeReadme: options.includeReadme,
+    includeCredits: options.includeCredits,
+    includeManifest: options.includeManifest,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    copyAudioFiles: options.copyAudioFiles,
+    filenamePolicy: options.filenamePolicy,
+    acknowledgeWarnings: options.acknowledgeWarnings,
+  };
+}
+
+function toSoundBoardExportOptions(options: ExportOptions): SoundBoardExportOptions {
+  const source = options.source.type === "gameProject" ? options.source : null;
+  return {
+    projectId: source?.projectId ?? "",
+    format: formatForProjectTarget(options),
+    usageItemIds: source?.usageItemIds,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeMissingItems: options.includeMissingItems,
+    includeUsageNotes: options.includeUsageNotes,
+    includeRights: options.includeRights,
+    includeAbsolutePaths: options.includeAbsolutePaths,
+    includeBoardSummary: options.includeBoardSummary,
+    includeValidationReport: options.includeValidationReport,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    selectedOnly: Boolean(source?.usageItemIds?.length),
+    copySelectedAudioFiles: false,
+    copyCandidates: false,
+  };
+}
+
+function toSoundRequestExportOptions(options: ExportOptions): SoundRequestExportOptions {
+  const source = options.source.type === "gameProject" ? options.source : null;
+  return {
+    projectId: source?.projectId ?? "",
+    format: soundRequestFormatForTarget(options.target),
+    documentType: soundRequestDocumentForTarget(options.target),
+    usageItemIds: source?.usageItemIds,
+    includeMissingItems: options.includeMissingItems,
+    includeCandidates: options.includeCandidates,
+    includeRejectedCandidates: options.includeRejectedCandidates,
+    includeStyleGuide: options.includeStyleGuide,
+    includeChecklist: options.includeChecklist,
+    includeWorkNotes: options.includeWorkNotes,
+    includeReviewNotes: options.includeReviewNotes,
+    includeCandidateReviewNotes: options.includeCandidateReviewNotes,
+    includeDecisionNotes: options.includeDecisionNotes,
+    includeAbsolutePaths: options.includeAbsolutePaths,
+    includeRights: options.includeRights,
+  };
+}
+
+function formatForProjectTarget(options: ExportOptions): SoundBoardExportOptions["format"] {
+  if (options.target === "project_missing_report") {
+    return "missing_report";
+  }
+  if (options.target === "project_codex_instruction") {
+    return "codex_instruction";
+  }
+  if (options.engineProfile === "unity") {
+    return "unity_manifest";
+  }
+  if (options.engineProfile === "unreal") {
+    return "unreal_manifest";
+  }
+  if (options.engineProfile === "monogame") {
+    return "monogame_manifest";
+  }
+  return "generic_manifest";
+}
+
+function soundRequestFormatForTarget(target: ExportTargetType): SoundRequestExportOptions["format"] {
+  if (target === "sound_request_csv") {
+    return "csv";
+  }
+  if (target === "sound_request_json") {
+    return "json";
+  }
+  return "markdown";
+}
+
+function soundRequestDocumentForTarget(target: ExportTargetType): SoundRequestExportOptions["documentType"] {
+  if (target === "project_style_guide_markdown") {
+    return "style_guide";
+  }
+  if (target === "project_checklist_markdown") {
+    return "checklist";
+  }
+  return "request";
+}
+
+function mapProjectSoundPackPreview(options: ExportOptions, dryRun: ProjectSoundPackDryRun): ExportPreview {
+  return {
+    ok: dryRun.errors.length === 0,
+    target: options.target,
+    assetCount: dryRun.summary.includedUsageItems,
+    exportSourceLabel: dryRun.projectName,
+    issues: [...dryRun.errors, ...dryRun.warnings].map((issue) => ({
+      severity: issue.severity,
+      code: mapProjectSoundPackIssueCode(issue.code),
+      message: issue.message,
+      assetId: issue.assetId,
+      fileName: issue.fileName,
+    })),
+    plannedFiles: dryRun.plannedFiles.map((file) => ({
+      path: join(dryRun.outputRoot, file.relativePath),
+      kind: kindForProjectSoundPackFile(file.type),
+      assetId: file.assetId,
+    })),
+  };
+}
+
+function mapSoundBoardPreview(options: ExportOptions, preview: SoundBoardExportPreview): ExportPreview {
+  const issues: ExportValidationIssue[] = [
+    ...(preview.validationIssues?.map((issue): ExportValidationIssue => ({
+      severity: issue.severity,
+      code: mapSoundBoardIssueCode(issue.code),
+      message: issue.message,
+      assetId: issue.assetId,
+    })) ?? []),
+    ...preview.warnings.map((message): ExportValidationIssue => ({
+      severity: "warning",
+      code: "PROJECT_SOUND_PACK_VALIDATION_BLOCKED",
+      message,
+    })),
+  ];
+  return {
+    ok: preview.ok && issues.every((issue) => issue.severity !== "error"),
+    target: options.target,
+    assetCount: preview.itemCount,
+    exportSourceLabel: options.source.type === "gameProject" ? options.source.name ?? preview.projectId : preview.projectId,
+    issues,
+    plannedFiles: preview.plannedFiles.map((file): PlannedExportFile => ({
+      path: file.path,
+      kind: file.kind === "report" ? "report" : file.kind,
+    })),
+  };
+}
+
+function mapSoundRequestPreview(options: ExportOptions, preview: SoundRequestExportPreview): ExportPreview {
+  const issues: ExportValidationIssue[] = [
+    ...(preview.validationIssues?.map((issue): ExportValidationIssue => ({
+      severity: issue.severity,
+      code: mapSoundBoardIssueCode(issue.code),
+      message: issue.message,
+      assetId: issue.assetId,
+    })) ?? []),
+    ...preview.warnings.map((message): ExportValidationIssue => ({
+      severity: "warning",
+      code: "PROJECT_SOUND_PACK_VALIDATION_BLOCKED",
+      message,
+    })),
+  ];
+  return {
+    ok: preview.ok && issues.every((issue) => issue.severity !== "error"),
+    target: options.target,
+    assetCount: preview.itemCount,
+    exportSourceLabel: options.source.type === "gameProject" ? options.source.name ?? preview.projectId : preview.projectId,
+    issues,
+    plannedFiles: preview.plannedFiles.map((file): PlannedExportFile => ({
+      path: file.path,
+      kind: file.kind,
+    })),
+  };
+}
+
+function mapProjectSoundPackResult(result: ProjectSoundPackExportResult): ExportRunResult {
+  return {
+    ok: result.ok,
+    outputPath: result.outputPath,
+    files: result.files,
+    summary: {
+      requested: result.summary.requestedUsageItems,
+      exported: result.ok ? result.files.length : 0,
+      skipped: result.summary.skippedMissingFiles + result.summary.skippedRejectedCandidates,
+      failed: result.ok ? 0 : result.summary.requestedUsageItems,
+      warnings: result.warnings.map((issue) => issue.message),
+    },
+    error: result.error,
+  };
+}
+
+function mapSoundRequestResult(result: SoundRequestExportResult): ExportRunResult {
+  return {
+    ok: result.ok,
+    outputPath: result.outputPath,
+    files: result.files,
+    summary: {
+      requested: result.summary.requested,
+      exported: result.summary.success,
+      skipped: result.summary.skipped,
+      failed: result.summary.failed,
+      warnings: result.summary.warnings,
+    },
+    error: result.error,
+  };
+}
+
+function mapSoundBoardResult(result: SoundBoardExportResult): ExportRunResult {
+  return {
+    ok: result.ok,
+    outputPath: result.outputPath,
+    files: result.files,
+    summary: {
+      requested: result.summary.requested,
+      exported: result.summary.success,
+      skipped: result.summary.skipped,
+      failed: result.summary.failed,
+      warnings: result.summary.warnings,
+    },
+    error: result.error,
+  };
+}
+
+function kindForProjectSoundPackFile(type: ProjectSoundPackDryRun["plannedFiles"][number]["type"]): PlannedExportFile["kind"] {
+  if (type === "audio") {
+    return "audio";
+  }
+  if (type === "doc") {
+    return "markdown";
+  }
+  if (type === "metadata") {
+    return "metadata";
+  }
+  return "manifest";
+}
+
+function mapProjectSoundPackIssueCode(code: string): ExportValidationIssue["code"] {
+  if (code === "PROJECT_SOUND_PACK_MISSING_FILE") {
+    return "MISSING_FILE";
+  }
+  if (code === "PROJECT_SOUND_PACK_DUPLICATE_OUTPUT") {
+    return "DUPLICATE_OUTPUT_FILE";
+  }
+  if (code === "PROJECT_SOUND_PACK_OUTPUT_EXISTS") {
+    return "EXPORT_TARGET_EXISTS";
+  }
+  if (code === "PROJECT_SOUND_PACK_NO_SELECTED_ASSETS") {
+    return "NO_ASSETS";
+  }
+  if (code === "UNKNOWN_LICENSE") {
+    return "UNKNOWN_LICENSE";
+  }
+  if (code === "CREDIT_MISSING") {
+    return "CREDIT_MISSING";
+  }
+  if (code === "LOOP_MISMATCH") {
+    return "LOOP_FLAG_MISMATCH";
+  }
+  if (code === "PLAYBACK_UNSUPPORTED") {
+    return "PLAYBACK_UNSUPPORTED";
+  }
+  return "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
+}
+
+function mapSoundBoardIssueCode(code: string): ExportValidationIssue["code"] {
+  if (code === "SELECTED_MISSING_FILE") {
+    return "MISSING_FILE";
+  }
+  if (code === "UNKNOWN_LICENSE") {
+    return "UNKNOWN_LICENSE";
+  }
+  if (code === "CREDIT_MISSING") {
+    return "CREDIT_MISSING";
+  }
+  if (code === "LOOP_MISMATCH") {
+    return "LOOP_FLAG_MISMATCH";
+  }
+  if (code === "SELECTED_PLAYBACK_UNSUPPORTED") {
+    return "PLAYBACK_UNSUPPORTED";
+  }
+  if (code === "DUPLICATE_KEY" || code === "ENGINE_KEY_WARNING") {
+    return "DUPLICATE_ENGINE_KEY";
+  }
+  return "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
+}
+
+function mapHistoryRow(row: ExportHistoryRow): ExportHistoryRecord {
+  return {
+    id: row.id,
+    libraryId: row.library_id,
+    createdAt: row.created_at,
+    status: row.status,
+    target: row.target,
+    sourceLabel: row.source_label,
+    outputPath: row.output_path,
+    files: parseJson<string[]>(row.files_json) ?? [],
+    summary: parseJson<ExportRunSummary>(row.summary_json) ?? {
+      requested: 0,
+      exported: 0,
+      skipped: 0,
+      failed: 0,
+      warnings: [],
+    },
+    errorCode: row.error_code,
+    errorMessage: row.error_message,
+    options: parseJson<Partial<ExportOptions>>(row.options_json) ?? {},
+  };
 }

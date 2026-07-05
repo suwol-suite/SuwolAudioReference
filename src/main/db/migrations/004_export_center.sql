@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS export_presets (
       'unreal_manifest',
       'monogame_manifest',
       'sound_pack',
+      'project_sound_pack',
+      'project_manifest',
+      'project_missing_report',
+      'project_codex_instruction',
       'csv_report'
     )
   ),

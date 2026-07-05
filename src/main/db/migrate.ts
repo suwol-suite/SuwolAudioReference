@@ -1,5 +1,7 @@
 import { ASSET_AUDIO_ANALYSIS_MIGRATION_SQL } from "../services/audio-analysis-repository";
 import { ASSET_AUDIO_FEATURES_MIGRATION_SQL } from "../services/audio-feature-repository";
+import { GAME_SOUND_BOARD_MIGRATION_SQL } from "../services/sound-board-schema";
+import { SOUND_BOARD_TEMPLATES_MIGRATION_SQL } from "../services/sound-board-template-schema";
 import { CORE_SCHEMA_MIGRATION_SQL } from "./core-schema";
 import type { LibraryDatabase } from "./library-database";
 
@@ -7,6 +9,175 @@ export interface MigrationDefinition {
   id: string;
   sql: string;
 }
+
+const EXPORT_CENTER_PHASE_11B_MIGRATION_SQL = `
+DROP TABLE IF EXISTS export_presets_next;
+
+CREATE TABLE export_presets_next (
+  id TEXT PRIMARY KEY,
+  library_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (
+    type IN (
+      'codex_instruction',
+      'generic_manifest',
+      'unity_manifest',
+      'unreal_manifest',
+      'monogame_manifest',
+      'sound_pack',
+      'csv_report',
+      'project_sound_pack',
+      'project_manifest',
+      'project_missing_report',
+      'project_codex_instruction'
+    )
+  ),
+  config_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (library_id) REFERENCES libraries(id) ON DELETE CASCADE
+);
+
+INSERT INTO export_presets_next (id, library_id, name, type, config_json, created_at, updated_at)
+SELECT id, library_id, name, type, config_json, created_at, updated_at
+FROM export_presets;
+
+DROP TABLE export_presets;
+ALTER TABLE export_presets_next RENAME TO export_presets;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_export_presets_library_name
+  ON export_presets (library_id, name COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS idx_export_presets_type
+  ON export_presets (library_id, type);
+
+CREATE TABLE IF NOT EXISTS export_history (
+  id TEXT PRIMARY KEY,
+  library_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('success', 'failure')),
+  target TEXT NOT NULL,
+  source_label TEXT NOT NULL,
+  output_path TEXT,
+  files_json TEXT NOT NULL,
+  summary_json TEXT NOT NULL,
+  error_code TEXT,
+  error_message TEXT,
+  options_json TEXT NOT NULL,
+  project_id TEXT,
+  FOREIGN KEY (library_id) REFERENCES libraries(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_export_history_library_created
+  ON export_history (library_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_export_history_project
+  ON export_history (library_id, project_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_export_history_target
+  ON export_history (library_id, target, created_at DESC);
+`;
+
+const SOUND_WORKFLOW_PRODUCTIVITY_MIGRATION_SQL = `
+ALTER TABLE sound_usage_items ADD COLUMN work_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_items ADD COLUMN assignee TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_items ADD COLUMN due_label TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_items ADD COLUMN review_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_items ADD COLUMN decision_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_items ADD COLUMN updated_workflow_at TEXT;
+
+ALTER TABLE sound_usage_candidates ADD COLUMN pros TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN cons TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN review_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN decision_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN rating_for_usage INTEGER;
+ALTER TABLE sound_usage_candidates ADD COLUMN loudness_fit TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN loop_fit TEXT NOT NULL DEFAULT '';
+ALTER TABLE sound_usage_candidates ADD COLUMN mood_fit TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS sound_project_style_guides (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL UNIQUE,
+  overview TEXT NOT NULL DEFAULT '',
+  ui_sound_guide TEXT NOT NULL DEFAULT '',
+  sfx_guide TEXT NOT NULL DEFAULT '',
+  bgm_guide TEXT NOT NULL DEFAULT '',
+  ambience_guide TEXT NOT NULL DEFAULT '',
+  voice_guide TEXT NOT NULL DEFAULT '',
+  loudness_guide TEXT NOT NULL DEFAULT '',
+  loop_guide TEXT NOT NULL DEFAULT '',
+  naming_guide TEXT NOT NULL DEFAULT '',
+  license_guide TEXT NOT NULL DEFAULT '',
+  export_guide TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES game_projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS sound_project_checklist_items (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  checked INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  built_in INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES game_projects(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sound_usage_items_workflow
+  ON sound_usage_items (project_id, assignee COLLATE NOCASE, due_label COLLATE NOCASE, updated_workflow_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_sound_project_checklist_project
+  ON sound_project_checklist_items (project_id, sort_order, created_at);
+
+DROP TABLE IF EXISTS export_presets_phase12;
+
+CREATE TABLE export_presets_phase12 (
+  id TEXT PRIMARY KEY,
+  library_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (
+    type IN (
+      'codex_instruction',
+      'generic_manifest',
+      'unity_manifest',
+      'unreal_manifest',
+      'monogame_manifest',
+      'sound_pack',
+      'csv_report',
+      'project_sound_pack',
+      'project_manifest',
+      'project_missing_report',
+      'project_codex_instruction',
+      'sound_request_markdown',
+      'sound_request_csv',
+      'sound_request_json',
+      'project_style_guide_markdown',
+      'project_checklist_markdown'
+    )
+  ),
+  config_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (library_id) REFERENCES libraries(id) ON DELETE CASCADE
+);
+
+INSERT INTO export_presets_phase12 (id, library_id, name, type, config_json, created_at, updated_at)
+SELECT id, library_id, name, type, config_json, created_at, updated_at
+FROM export_presets;
+
+DROP TABLE export_presets;
+ALTER TABLE export_presets_phase12 RENAME TO export_presets;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_export_presets_library_name
+  ON export_presets (library_id, name COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS idx_export_presets_type
+  ON export_presets (library_id, type);
+`;
 
 export const MIGRATIONS: MigrationDefinition[] = [
   { id: "000_core_schema", sql: CORE_SCHEMA_MIGRATION_SQL },
@@ -112,6 +283,10 @@ CREATE TABLE IF NOT EXISTS export_presets (
       'unreal_manifest',
       'monogame_manifest',
       'sound_pack',
+      'project_sound_pack',
+      'project_manifest',
+      'project_missing_report',
+      'project_codex_instruction',
       'csv_report'
     )
   ),
@@ -129,6 +304,10 @@ CREATE INDEX IF NOT EXISTS idx_export_presets_type
 `,
   },
   { id: "005_audio_similarity", sql: ASSET_AUDIO_FEATURES_MIGRATION_SQL },
+  { id: "006_game_sound_board", sql: GAME_SOUND_BOARD_MIGRATION_SQL },
+  { id: "007_sound_board_templates", sql: SOUND_BOARD_TEMPLATES_MIGRATION_SQL },
+  { id: "008_export_center_phase_11b", sql: EXPORT_CENTER_PHASE_11B_MIGRATION_SQL },
+  { id: "009_sound_workflow_productivity", sql: SOUND_WORKFLOW_PRODUCTIVITY_MIGRATION_SQL },
 ];
 
 export function runMigrations(db: LibraryDatabase): void {
