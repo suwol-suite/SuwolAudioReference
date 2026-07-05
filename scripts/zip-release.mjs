@@ -9,11 +9,16 @@ const productName = packageJson.build?.productName ?? "Suwol Audio Reference";
 const version = packageJson.version;
 const mode = process.argv[2] ?? "all";
 
+function releaseArtifactName(platformLabel) {
+  const productSlug = productName.replace(/\s+/g, ".");
+  return `${productSlug}.${version}.${platformLabel}.x64.zip`;
+}
+
 const TARGETS = {
   win: {
     source: join(root, "release", "win-unpacked"),
     executable: join(root, "release", "win-unpacked", `${productName}.exe`),
-    output: join(root, "release", `${productName} ${version} Windows x64.zip`),
+    output: join(root, "release", releaseArtifactName("Windows")),
     label: "Windows x64",
   },
   linux: {
@@ -23,7 +28,7 @@ const TARGETS = {
       join(root, "release", "linux-unpacked", productName),
       join(root, "release", "linux-unpacked", productName.replace(/\s+/g, "-").toLowerCase()),
     ],
-    output: join(root, "release", `${productName} ${version} Linux x64.zip`),
+    output: join(root, "release", releaseArtifactName("Linux")),
     label: "Linux x64",
   },
 };

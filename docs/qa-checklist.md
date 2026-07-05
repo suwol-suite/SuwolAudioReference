@@ -8,7 +8,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd test` passes.
 - `npm.cmd audit` passes or every finding has a documented release decision.
 - `npm.cmd run check:i18n` passes.
-- `npm.cmd run check:release-tag -- --tag=v0.1.1` passes before any tag is created.
+- `npm.cmd run check:release-tag -- --tag=v0.1.2` passes before any tag is created.
 - `npm.cmd run build` passes.
 - `npm.cmd run smoke:production-entry` passes after build.
 - `npm.cmd run pack` passes.
@@ -16,8 +16,9 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd run dist:win:dir` passes when publishing a Windows zip.
 - `npm.cmd run zip:win` passes after the Windows unpacked build is created.
 - `npm.cmd run check:release -- --platform win` passes after the Windows zip is created.
+- `npm.cmd run checksums` and `npm.cmd run check:release -- --platform win --require-checksums` pass when publishing checksum files.
 - The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, and `npm run check:release -- --platform linux`.
-- `package.json` version is `0.1.1`, `engines.node` is Node 24+, license is `Apache-2.0`, and packaging remains zip-first.
+- `package.json` version is `0.1.2`, `engines.node` is Node 24+, license is `Apache-2.0`, and packaging remains zip-first.
 
 ## Fixture Set
 
@@ -325,7 +326,7 @@ Do not commit generated fixture audio.
 - Launch `release\win-unpacked\Suwol Audio Reference.exe`.
 - Launch the same executable a second time and confirm the existing window is focused or restored instead of leaving two main windows open.
 - Confirm the app icon and window title are correct.
-- Open Settings > About and confirm version `0.1.1`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
+- Open Settings > About and confirm version `0.1.2`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
 - Create or open a library.
 - Import the fixture set.
 - Play one imported audio file.
@@ -337,5 +338,5 @@ Do not commit generated fixture audio.
 - Open settings and run diagnostics.
 - Close and reopen the packaged app.
 - Confirm the same library can be reopened and browsed.
-- Extract `release\Suwol Audio Reference 0.1.1 Windows x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
+- Extract `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
 - Download the GitHub Actions Linux artifact or GitHub Release Linux zip, extract it on Linux, set executable permission if needed, and run the packaged executable.

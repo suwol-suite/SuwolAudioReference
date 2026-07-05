@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { access, readFile, readdir, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const EXPECTED_APP_ID = "work.suwol.audio-reference";
@@ -17,6 +18,10 @@ function parsePlatform(argv) {
     return argv[index + 1];
   }
   return "win";
+}
+
+function hasFlag(argv, flag) {
+  return argv.includes(flag);
 }
 
 async function assertFile(path, label) {
@@ -83,9 +88,30 @@ function assertZipFirstBuildMetadata(packageJson) {
   }
   for (const target of [...winTargets, ...linuxTargets]) {
     if (["nsis", "msi", "appx", "appimage", "deb", "rpm", "snap", "flatpak"].includes(String(target).toLowerCase())) {
-      throw new Error(`Installer/package target is outside 0.1.1 zip-first scope: ${target}`);
+      throw new Error(`Installer/package target is outside the zip-first release scope: ${target}`);
     }
   }
+}
+
+function releaseArtifactName(productName, version, platformLabel) {
+  return `${productName.replace(/\s+/g, ".")}.${version}.${platformLabel}.x64.zip`;
+}
+
+async function sha256File(path) {
+  const content = await readFile(path);
+  return createHash("sha256").update(content).digest("hex");
+}
+
+async function assertChecksumEntry(root, zipPath) {
+  const checksumPath = join(root, "release", "SHA256SUMS.txt");
+  await assertFile(checksumPath, "SHA256SUMS");
+  const checksumText = await readFile(checksumPath, "utf8");
+  const expectedHash = await sha256File(zipPath);
+  const expectedLine = `${expectedHash}  ${basename(zipPath)}`;
+  if (!checksumText.split(/\r?\n/).includes(expectedLine)) {
+    throw new Error(`SHA256SUMS.txt does not contain the expected checksum entry for ${basename(zipPath)}`);
+  }
+  return checksumPath;
 }
 
 async function assertLinuxExecutable(root, productName, packageName) {
@@ -105,7 +131,7 @@ async function assertLinuxExecutable(root, productName, packageName) {
   throw new Error(`Linux executable was not found in ${linuxUnpacked}`);
 }
 
-export async function checkReleaseArtifacts(root = process.cwd(), platform = "win") {
+export async function checkReleaseArtifacts(root = process.cwd(), platform = "win", options = {}) {
   if (!VALID_PLATFORMS.has(platform)) {
     throw new Error(`Unknown release artifact platform "${platform}". Use win, linux, or all.`);
   }
@@ -158,6 +184,7 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     linuxZip: null,
     unpackedExe: null,
     linuxExecutable: null,
+    checksums: null,
   };
 
   if (platform === "win" || platform === "all") {
@@ -166,8 +193,11 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     const exe = join(winUnpacked, `${productName}.exe`);
     await assertFile(exe, "Windows unpacked executable");
     await assertPackagedResources(winUnpacked, "Windows unpacked");
-    const windowsZip = join(root, "release", `${productName} ${version} Windows x64.zip`);
+    const windowsZip = join(root, "release", releaseArtifactName(productName, version, "Windows"));
     await assertFile(windowsZip, "Windows zip");
+    if (options.requireChecksums) {
+      result.checksums = await assertChecksumEntry(root, windowsZip);
+    }
     result.unpackedExe = exe;
     result.windowsZip = windowsZip;
   }
@@ -177,8 +207,11 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     await assertDirectory(linuxUnpacked, "Linux unpacked folder");
     const linuxExecutable = await assertLinuxExecutable(root, productName, packageJson.name);
     await assertPackagedResources(linuxUnpacked, "Linux unpacked");
-    const linuxZip = join(root, "release", `${productName} ${version} Linux x64.zip`);
+    const linuxZip = join(root, "release", releaseArtifactName(productName, version, "Linux"));
     await assertFile(linuxZip, "Linux zip");
+    if (options.requireChecksums) {
+      result.checksums = await assertChecksumEntry(root, linuxZip);
+    }
     result.linuxExecutable = linuxExecutable;
     result.linuxZip = linuxZip;
   }
@@ -190,9 +223,10 @@ const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(resolve
 if (isDirectRun) {
   const args = process.argv.slice(2);
   const platform = parsePlatform(args);
+  const requireChecksums = hasFlag(args, "--require-checksums");
   const rootArg = args.find((arg) => !arg.startsWith("--") && arg !== platform);
   const root = rootArg ? resolve(rootArg) : process.cwd();
-  const result = await checkReleaseArtifacts(root, platform);
+  const result = await checkReleaseArtifacts(root, platform, { requireChecksums });
   console.log(`release artifacts ok: ${result.productName} ${result.version} (${platform})`);
   if (result.windowsZip) {
     console.log(`windows zip: ${result.windowsZip}`);
@@ -201,5 +235,8 @@ if (isDirectRun) {
   if (result.linuxZip) {
     console.log(`linux zip: ${result.linuxZip}`);
     console.log(`linux executable: ${result.linuxExecutable}`);
+  }
+  if (result.checksums) {
+    console.log(`checksums: ${result.checksums}`);
   }
 }

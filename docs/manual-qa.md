@@ -1,12 +1,12 @@
 # Suwol Audio Reference Manual QA Guide
 
-Use this guide for a human smoke pass before publishing a Windows 0.1.1 build. The goal is to confirm that a real user can install, open, import, listen, organize, export, and recover from common errors without the app modifying original audio files.
+Use this guide for a human smoke pass before publishing a Windows 0.1.2 build. The goal is to confirm that a real user can install, open, import, listen, organize, export, and recover from common errors without the app modifying original audio files.
 
 Record the tester name, Windows version, package type, tested artifact path, date, fixture folder, and final pass/fail result in the release notes.
 
 ## QA Run Record
 
-Fill this in before publishing a 0.1.1 build:
+Fill this in before publishing a 0.1.2 build:
 
 - Tester:
 - Date:
@@ -22,7 +22,7 @@ Fill this in before publishing a 0.1.1 build:
 
 - Close any running Suwol Audio Reference windows before launching a packaged build.
 - Prefer `release\win-unpacked\Suwol Audio Reference.exe` for the full Windows manual pass.
-- Extract `release\Suwol Audio Reference 0.1.1 Windows x64.zip` to a normal writable folder before running the executable from the extracted `win-unpacked` folder.
+- Extract `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip` to a normal writable folder before running the executable from the extracted `win-unpacked` folder.
 - Use the GitHub Actions Linux artifact or GitHub Release Linux zip for Linux smoke on a Linux test machine.
 - Keep fixture audio outside the repository, for example under `C:\Temp\suwol-audio-phase6-fixtures`.
 - Do not run multiple GUI smoke commands at the same time.
@@ -45,7 +45,7 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 2. Confirm the window title is `Suwol Audio Reference`.
 3. Confirm the app icon appears in the window/taskbar.
 4. Open Settings, then About.
-5. Confirm version `0.1.1`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path are visible.
+5. Confirm version `0.1.2`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path are visible.
 6. Confirm Korean is usable as the default language.
 7. Switch to English.
 8. Close and reopen the app, then confirm the selected language is preserved.
@@ -220,7 +220,7 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 
 ## K. Release Sign-Off
 
-1. Confirm `docs/release-notes-0.1.1.md` matches the tested artifact.
+1. Confirm `docs/release-notes-0.1.2.md` matches the tested artifact.
 2. Confirm `docs/known-issues.md` covers unsigned Windows warnings, zip-first distribution, Linux playback differences, copy-only Project Sound Pack export, and no direct engine project mutation.
 3. Confirm `docs/release-checklist.md` automated gates are complete.
 4. Confirm no stage, commit, push, tag, or GitHub Release action was performed during the QA documentation pass.

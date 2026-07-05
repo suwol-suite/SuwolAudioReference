@@ -11,13 +11,13 @@ This checklist is for preparing an MVP Windows release candidate. The MVP should
 ## Version And Metadata
 
 - `package.json` version is correct.
-- `package.json` version is `0.1.1` for this release candidate.
+- `package.json` version is `0.1.2` for this release candidate.
 - `package.json` `productName`, `appId`, `description`, and `license` are correct.
 - `package.json` `engines.node` requires Node 24 or newer.
 - Windows and Linux build metadata remains zip-first via unpacked `dir` outputs plus the repo zip scripts.
-- Installer, AppImage, deb, rpm, Snap, Flatpak, code-signing, and auto-update targets are not introduced in 0.1.1.
+- Installer, AppImage, deb, rpm, Snap, Flatpak, code-signing, and auto-update targets are not introduced in 0.1.2.
 - `README.md` reflects the supported platform, formats, library layout, and backup method.
-- `docs/manual-qa.md`, `docs/release-notes-0.1.1.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
+- `docs/manual-qa.md`, `docs/release-notes-0.1.2.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
 - Generated icons exist under `assets/brand/` and `build/`.
@@ -43,7 +43,9 @@ For a Windows zip release, also run:
 ```bash
 npm.cmd run dist:win:dir
 npm.cmd run zip:win
+npm.cmd run checksums
 npm.cmd run check:release -- --platform win
+npm.cmd run check:release -- --platform win --require-checksums
 ```
 
 For Linux, confirm the GitHub Actions Linux job runs:
@@ -80,6 +82,7 @@ npm run check:release -- --platform linux
 - `release\win-unpacked\resources` contains the packaged app resources.
 - The Windows zip artifact is present when `npm.cmd run zip:win` is used.
 - The Linux zip artifact is present in the GitHub Actions Linux job.
+- `SHA256SUMS.txt` is generated for release zip verification.
 - `npm.cmd run smoke:packaged-paths` passes after `pack` and again after `dist`.
 - `npm.cmd run check:release` passes after final artifacts are produced.
 - Release artifacts do not include source-only temporary files.
@@ -106,7 +109,7 @@ Include:
 ## GitHub Release Tags
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
-- Release tags use the `vX.Y.Z` format, for example `v0.1.1`.
+- Release tags use the `vX.Y.Z` format, for example `v0.1.2`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
 - Tag pushes create a GitHub Release and upload Windows/Linux zip assets.
@@ -116,8 +119,8 @@ Include:
 Release command:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 Do not run the tag commands until the release owner has reviewed the final working tree, artifacts, checksums, manual QA notes, and GitHub Actions status.

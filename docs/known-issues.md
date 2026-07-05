@@ -1,6 +1,6 @@
 # Known Issues
 
-This document lists known limitations and release notes for Suwol Audio Reference 0.1.1. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
+This document lists known limitations and release notes for Suwol Audio Reference 0.1.2. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
 
 ## Unsigned Windows App Warning
 
@@ -32,7 +32,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 
 ## Zip-First Distribution Only
 
-- Symptom: 0.1.1 publishes Windows and Linux zip files instead of installers or native Linux packages.
+- Symptom: 0.1.2 publishes Windows and Linux zip files instead of installers or native Linux packages.
 - Impact: Users must extract the zip and run the executable from the extracted folder. Windows users may see unsigned-app warnings.
 - Temporary handling: Publish release notes, hashes, source information, and distribution guides next to the zip artifacts.
 - Future plan: Evaluate installers or signed distribution only after the MVP zip workflow is stable.
@@ -42,7 +42,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Symptom: Project Manifest, Project Sound Pack, Unity, Unreal, and MonoGame exports create local handoff files but do not patch game projects directly.
 - Impact: Users must manually import or copy generated manifests/lists/audio into their engine project if desired.
 - Temporary handling: Review generated `README.md`, manifests, and content lists inside the export folder.
-- Future plan: Keep direct engine project mutation out of 0.1.1 unless a later phase explicitly scopes an integration.
+- Future plan: Keep direct engine project mutation out of 0.1.2 unless a later phase explicitly scopes an integration.
 
 ## Large Library Performance Expectations
 

@@ -61,9 +61,9 @@ This repository is preparing a Windows MVP release. The current build includes:
 - Development target: Node.js 24+ and npm 10+ on Windows PowerShell.
 - macOS builds are not release targets for this MVP.
 
-## 0.1.1 Release Focus
+## 0.1.2 Release Focus
 
-Version 0.1.1 is the Game Project and Sound Usage Board release candidate. The main release path is:
+Version 0.1.2 is the Game Project, Sound Usage Board, Project Sound Pack, Export Center, and workflow productivity release candidate. The existing `v0.1.1` release remains tied to its historical tag; `0.1.2` is the next release that contains the current main-branch project workflow work. The main release path is:
 
 - Create a local game project.
 - Build a Sound Usage Board with required usage keys, categories, priorities, loop needs, variants, notes, and candidates.
@@ -72,6 +72,7 @@ Version 0.1.1 is the Game Project and Sound Usage Board release candidate. The m
 - Open Export Center from Sound Board shortcuts with the active game project prefilled.
 - Export Project Sound Pack, Project Manifest, Project Missing Report, and Project Codex Instruction outputs.
 - Review project export presets and local export history.
+- Use Sound Work TODO queues, candidate review notes/scores, Project Sound Style Guide, Project Checklist, and Sound Request exports.
 - Distribute Windows and Linux zip artifacts only.
 
 The release stays local-first: no AI/cloud calls, no Codex/OpenAI API calls, no bundled ffmpeg, no GPL runtime dependency added by the app, no audio editing/conversion, and no direct mutation of Unity, Unreal, MonoGame, or other engine project files.
@@ -241,7 +242,7 @@ Phase 7 release-readiness notes:
 - Manual QA is documented in `docs/manual-qa.md`.
 - Windows unsigned distribution guidance is documented in `docs/windows-distribution.md`.
 - Linux zip distribution guidance is documented in `docs/linux-distribution.md`.
-- Release notes and known issues are documented in `docs/release-notes-0.1.1.md` and `docs/known-issues.md`.
+- Release notes and known issues are documented in `docs/release-notes-0.1.2.md` and `docs/known-issues.md`.
 - `check:release` validates the expected zip artifact, unpacked executable, release docs, notices, icons, and package metadata.
 
 GitHub release workflow notes:
@@ -370,26 +371,28 @@ Release outputs are written to `release/`, which is intentionally ignored by git
 
 The public release path is GitHub Releases on `suwol-suite/SuwolAudioReference`.
 
-Main branch pushes and pull requests create downloadable workflow artifacts. A version tag creates a GitHub Release and uploads the Windows/Linux zip files:
+Main branch pushes and pull requests create downloadable workflow artifacts. A version tag creates a GitHub Release and uploads the Windows/Linux zip files. The existing `v0.1.1` tag belongs to the earlier GitHub Release and should not be moved or regenerated.
+
+For the current release candidate:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
-The release tag must match `package.json` exactly. For example, `package.json` version `0.1.1` must use tag `v0.1.1`. CI runs `npm run check:release-tag` and fails the release build if the tag, package version, and `docs/release-notes-X.Y.Z.md` do not line up.
+The release tag must match `package.json` exactly. For example, `package.json` version `0.1.2` must use tag `v0.1.2`. CI runs `npm run check:release-tag` and fails the release build if the tag, package version, and `docs/release-notes-X.Y.Z.md` do not line up.
 
 For the next release, update `package.json` version, add a matching `docs/release-notes-X.Y.Z.md`, verify the release checks, then tag as `vX.Y.Z`.
 
 Windows users:
 
-1. Download `Suwol Audio Reference 0.1.1 Windows x64.zip`.
+1. Download `Suwol.Audio.Reference.0.1.2.Windows.x64.zip`.
 2. Extract it to a writable folder.
 3. Run `Suwol Audio Reference.exe` from the extracted `win-unpacked` folder.
 
 Linux users:
 
-1. Download `Suwol Audio Reference 0.1.1 Linux x64.zip`.
+1. Download `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`.
 2. Extract it to a writable folder.
 3. If needed, set executable permission:
 
@@ -402,7 +405,7 @@ The exact Linux executable name is verified by the release artifact checker and 
 
 ## Windows Distribution Notes
 
-- Windows zip artifact: `release\Suwol Audio Reference 0.1.1 Windows x64.zip`.
+- Windows zip artifact: `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip`.
 - Unpacked executable: `release\win-unpacked\Suwol Audio Reference.exe`.
 - The current MVP is unsigned. Windows SmartScreen or browser download checks may warn that the publisher is unknown.
 - Do not ask testers to ignore security warnings blindly. Publish release notes, hashes, license, third-party notices, and the artifact source so testers can verify what they run.
@@ -413,7 +416,7 @@ The exact Linux executable name is verified by the release artifact checker and 
 - [Manual QA guide](./docs/manual-qa.md)
 - [QA checklist](./docs/qa-checklist.md)
 - [Release checklist](./docs/release-checklist.md)
-- [Release notes 0.1.1](./docs/release-notes-0.1.1.md)
+- [Release notes 0.1.2](./docs/release-notes-0.1.2.md)
 - [Known issues](./docs/known-issues.md)
 - [Windows distribution guide](./docs/windows-distribution.md)
 - [Linux distribution guide](./docs/linux-distribution.md)

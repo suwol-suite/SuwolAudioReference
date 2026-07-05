@@ -1,6 +1,6 @@
 {
   "name": "suwol-audio-reference",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "main": "dist/main/main.js",
@@ -20,6 +20,7 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "check:release": "node scripts/check-release-artifacts.mjs",
+    "checksums": "node scripts/generate-checksums.mjs",
     "zip:win": "node scripts/zip-release.mjs win",
     "zip:linux": "node scripts/zip-release.mjs linux",
     "zip:portable": "node scripts/zip-release.mjs all",

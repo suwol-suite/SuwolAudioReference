@@ -37,4 +37,9 @@ if (tagName !== expectedTag) {
 const releaseNotesPath = join(root, "docs", `release-notes-${version}.md`);
 await access(releaseNotesPath);
 
+const readme = await readFile(join(root, "README.md"), "utf8");
+if (!readme.includes(`release-notes-${version}.md`) || !readme.includes(expectedTag)) {
+  throw new Error(`README.md must reference release-notes-${version}.md and ${expectedTag}.`);
+}
+
 console.log(`release tag check ok: ${tagName} matches package.json ${version}`);

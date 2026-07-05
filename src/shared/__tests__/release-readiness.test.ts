@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -77,6 +78,7 @@ describe("release readiness docs and checks", () => {
     }
 
     writeFileSync(join(root, "package.json"), JSON.stringify(packageJson), "utf8");
+    const windowsZipName = `Suwol.Audio.Reference.${APP_VERSION}.Windows.x64.zip`;
     for (const relativePath of [
       "README.md",
       "LICENSE",
@@ -92,14 +94,16 @@ describe("release readiness docs and checks", () => {
       "build/icon.png",
       join("release", "win-unpacked", `${productName}.exe`),
       join("release", "win-unpacked", "resources", "app.asar"),
-      join("release", `${productName} ${APP_VERSION} Windows x64.zip`),
+      join("release", windowsZipName),
     ]) {
       writeFileSync(join(root, relativePath), "fixture", "utf8");
     }
+    const fixtureHash = createHash("sha256").update("fixture").digest("hex");
+    writeFileSync(join(root, "release", "SHA256SUMS.txt"), `${fixtureHash}  ${windowsZipName}\n`, "utf8");
 
     const output = execFileSync(
       process.execPath,
-      [join(process.cwd(), "scripts", "check-release-artifacts.mjs"), root, "--platform", "win"],
+      [join(process.cwd(), "scripts", "check-release-artifacts.mjs"), root, "--platform", "win", "--require-checksums"],
       {
         encoding: "utf8",
       },
@@ -120,7 +124,7 @@ describe("release readiness docs and checks", () => {
     expect(output).toContain(`release tag check ok: v${APP_VERSION}`);
   });
 
-  it("documents the 0.1.1 project export release scope", () => {
+  it("documents the 0.1.2 project export release scope", () => {
     const notes = readFileSync(join(process.cwd(), APP_RELEASE_NOTES_DOC), "utf8");
 
     expect(notes).toContain("Game Project");
