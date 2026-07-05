@@ -294,6 +294,18 @@ Do not commit generated fixture audio.
 - Apply rollback only after confirmation and confirm existing candidate selected/approved flags return to the snapshot state.
 - Confirm rollback does not create/delete usage rows, create/delete assets, move source audio, or modify engine project files.
 
+## Sound Change Review
+
+- Create a baseline snapshot, change the selected/approved asset on the current board, then create a Change Review from baseline.
+- Confirm pending review items show change type, severity, before/after values, usage key, reviewer note, and decision reason fields.
+- Approve one change, reject one change, and defer one change. Confirm summary counts and filters update.
+- Save a reviewer note and decision reason, close/reopen the board, and confirm they persist.
+- Export a Change Review Markdown/JSON/CSV report from Export Center and confirm absolute source paths are excluded by default.
+- Export a Sound Pack Changelog with review decisions enabled and confirm approved/rejected/deferred decisions are reflected only when the option is enabled.
+- Confirm rejected change still present and pending breaking/selection/rights review warnings appear as warnings, not automatic mapping changes.
+- Preview Project Sound Pack with latest review summary and optional review report, then confirm original source audio and game project files are unchanged.
+- Switch ko/en and confirm Change Review labels, statuses, severities, and Export Center options are localized.
+
 ## Phase 5A UI Polish
 
 - Open Settings and confirm General, Playback, Library, Shortcuts, and About tabs work.

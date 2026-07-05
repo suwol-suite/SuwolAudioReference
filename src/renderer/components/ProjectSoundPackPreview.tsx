@@ -38,6 +38,13 @@ export function ProjectSoundPackPreview({
         <Metric label={t("projectSoundPack.duplicateOutput" as MessageKey)} value={format.number(preview.summary.duplicateOutputFilenameCount)} />
         <Metric label={t("projectSoundPack.errors" as MessageKey)} value={format.number(preview.summary.validationErrorCount)} />
         <Metric label={t("projectSoundPack.warnings" as MessageKey)} value={format.number(preview.summary.validationWarningCount)} />
+        {preview.latestReview ? (
+          <>
+            <Metric label={t("projectSoundPack.reviewPending" as MessageKey)} value={format.number(preview.latestReview.pendingChanges)} />
+            <Metric label={t("projectSoundPack.reviewApproved" as MessageKey)} value={format.number(preview.latestReview.approvedChanges)} />
+            <Metric label={t("projectSoundPack.reviewRejected" as MessageKey)} value={format.number(preview.latestReview.rejectedChanges)} />
+          </>
+        ) : null}
       </dl>
       <div className="planned-file-list">
         <span>{t("projectSoundPack.outputFolder" as MessageKey)}: {preview.outputRoot}</span>

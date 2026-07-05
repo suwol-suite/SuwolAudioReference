@@ -24,6 +24,13 @@ import type { ProjectSoundPackOptions } from "../../shared/project-sound-pack-ty
 import type {
   GameProjectInput,
   GameProjectUpdateInput,
+  SoundChangeReviewBaselineInput,
+  SoundChangeReviewBulkUpdateInput,
+  SoundChangeReviewCreateInput,
+  SoundChangeReviewExportOptions,
+  SoundChangeReviewItemUpdateInput,
+  SoundChangeReviewListQuery,
+  SoundChangeReviewUpdateInput,
   SoundBoardExportOptions,
   SoundPackChangelogOptions,
   SoundPackCompareInput,
@@ -452,6 +459,40 @@ export function registerIpcHandlers(
   ipcMain.handle("soundSnapshots:changelogExport", async (_event, input: SoundPackChangelogOptions & { outputPath?: string }) => {
     const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
     return outputPath ? services.soundPackChangelogService.export(input, outputPath) : null;
+  });
+  ipcMain.handle("changeReviews:list", (_event, query: SoundChangeReviewListQuery) =>
+    services.soundChangeReviewService.list(query),
+  );
+  ipcMain.handle("changeReviews:createFromDiff", (_event, input: SoundChangeReviewCreateInput) =>
+    services.soundChangeReviewService.createFromDiff(input),
+  );
+  ipcMain.handle("changeReviews:createFromBaseline", (_event, input: SoundChangeReviewBaselineInput) =>
+    services.soundChangeReviewService.createFromBaseline(input),
+  );
+  ipcMain.handle("changeReviews:get", (_event, reviewId: string) =>
+    services.soundChangeReviewService.get(reviewId),
+  );
+  ipcMain.handle("changeReviews:update", (_event, reviewId: string, input: SoundChangeReviewUpdateInput) =>
+    services.soundChangeReviewService.update(reviewId, input),
+  );
+  ipcMain.handle("changeReviews:archive", (_event, reviewId: string) =>
+    services.soundChangeReviewService.archive(reviewId),
+  );
+  ipcMain.handle("changeReviews:updateItemStatus", (_event, itemId: string, input: SoundChangeReviewItemUpdateInput) =>
+    services.soundChangeReviewService.updateItemStatus(itemId, input),
+  );
+  ipcMain.handle("changeReviews:bulkUpdateItems", (_event, input: SoundChangeReviewBulkUpdateInput) =>
+    services.soundChangeReviewService.bulkUpdateItems(input),
+  );
+  ipcMain.handle("changeReviews:updateItemNote", (_event, itemId: string, input: SoundChangeReviewItemUpdateInput) =>
+    services.soundChangeReviewService.updateItemNote(itemId, input),
+  );
+  ipcMain.handle("changeReviews:exportPreview", (_event, input: SoundChangeReviewExportOptions) =>
+    services.soundChangeReviewExportService.preview(input),
+  );
+  ipcMain.handle("changeReviews:export", async (_event, input: SoundChangeReviewExportOptions & { outputPath?: string }) => {
+    const outputPath = input.outputPath ?? (await pickExportDirectory(getWindow()));
+    return outputPath ? services.soundChangeReviewExportService.export(input, outputPath) : null;
   });
   ipcMain.handle("export:projectPreview", (_event, input: SoundBoardExportOptions & { outputPath?: string }) =>
     services.soundBoardExportService.preview(input, input.outputPath),

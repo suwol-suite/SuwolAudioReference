@@ -70,6 +70,18 @@ import type {
   SoundBoardExportResult,
   SoundBoardSummary,
   SoundBoardValidationResult,
+  SoundChangeReviewBaselineInput,
+  SoundChangeReviewBulkUpdateInput,
+  SoundChangeReviewCreateInput,
+  SoundChangeReviewDetail,
+  SoundChangeReviewExportOptions,
+  SoundChangeReviewExportPreview,
+  SoundChangeReviewExportResult,
+  SoundChangeReviewItemRecord,
+  SoundChangeReviewItemUpdateInput,
+  SoundChangeReviewListQuery,
+  SoundChangeReviewRecord,
+  SoundChangeReviewUpdateInput,
   SoundCandidateReviewInput,
   SoundCandidateSuggestInput,
   SoundCandidateSuggestion,
@@ -264,6 +276,19 @@ export interface SuwolAudioApi {
     rollbackApply: (input: SoundPackRollbackApplyInput) => Promise<SoundPackRollbackResult>;
     changelogPreview: (input: SoundPackChangelogOptions) => Promise<SoundPackChangelogPreview>;
     changelogExport: (input: SoundPackChangelogOptions & { outputPath?: string }) => Promise<SoundPackChangelogResult | null>;
+  };
+  changeReviews: {
+    list: (query: SoundChangeReviewListQuery) => Promise<SoundChangeReviewRecord[]>;
+    createFromDiff: (input: SoundChangeReviewCreateInput) => Promise<SoundChangeReviewDetail>;
+    createFromBaseline: (input: SoundChangeReviewBaselineInput) => Promise<SoundChangeReviewDetail>;
+    get: (reviewId: string) => Promise<SoundChangeReviewDetail | null>;
+    update: (reviewId: string, input: SoundChangeReviewUpdateInput) => Promise<SoundChangeReviewDetail>;
+    archive: (reviewId: string) => Promise<SoundChangeReviewDetail>;
+    updateItemStatus: (itemId: string, input: SoundChangeReviewItemUpdateInput) => Promise<SoundChangeReviewItemRecord>;
+    bulkUpdateItems: (input: SoundChangeReviewBulkUpdateInput) => Promise<SoundChangeReviewDetail>;
+    updateItemNote: (itemId: string, input: SoundChangeReviewItemUpdateInput) => Promise<SoundChangeReviewItemRecord>;
+    exportPreview: (input: SoundChangeReviewExportOptions) => Promise<SoundChangeReviewExportPreview>;
+    export: (input: SoundChangeReviewExportOptions & { outputPath?: string }) => Promise<SoundChangeReviewExportResult | null>;
   };
   soundBoardExport: {
     projectPreview: (input: SoundBoardExportOptions & { outputPath?: string }) => Promise<SoundBoardExportPreview>;

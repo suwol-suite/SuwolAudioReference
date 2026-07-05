@@ -1,6 +1,7 @@
 import type { AssetRightsMetadata } from "./export-types";
 import type {
   GameEngineType,
+  SoundChangeReviewSummary,
   SoundBoardValidationSeverity,
   SoundUsageCategory,
   SoundUsagePriority,
@@ -32,6 +33,8 @@ export interface ProjectSoundPackOptions {
   includeReviewNotes?: boolean;
   includeCandidateReviewNotes?: boolean;
   includeDecisionNotes?: boolean;
+  includeLatestChangeReviewSummary?: boolean;
+  includeReviewReport?: boolean;
   copyAudioFiles?: boolean;
   filenamePolicy?: ProjectSoundPackFilenamePolicy;
   blockIfRequiredMissing?: boolean;
@@ -66,7 +69,9 @@ export type ProjectSoundPackIssueCode =
   | "CREDIT_MISSING"
   | "LOOP_MISMATCH"
   | "PLAYBACK_UNSUPPORTED"
-  | "REJECTED_SKIPPED";
+  | "REJECTED_SKIPPED"
+  | "PENDING_CHANGE_REVIEW_ITEMS"
+  | "REJECTED_CHANGE_STILL_PRESENT";
 
 export interface ProjectSoundPackIssue {
   severity: SoundBoardValidationSeverity;
@@ -171,6 +176,7 @@ export interface ProjectSoundPackDryRun {
   warnings: ProjectSoundPackIssue[];
   errors: ProjectSoundPackIssue[];
   summary: ProjectSoundPackSummary;
+  latestReview?: ProjectSoundPackReviewSummary | null;
   outputTree: string[];
 }
 
@@ -186,4 +192,16 @@ export interface ProjectSoundPackExportResult {
     code: string;
     message: string;
   };
+}
+
+export interface ProjectSoundPackReviewSummary {
+  reviewId: string;
+  reviewName: string;
+  reviewStatus: string;
+  pendingChanges: number;
+  approvedChanges: number;
+  rejectedChanges: number;
+  deferredChanges: number;
+  rejectedChangesStillPresent: number;
+  summary: SoundChangeReviewSummary;
 }

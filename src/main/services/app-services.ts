@@ -19,6 +19,8 @@ import { SoundBoardExportService } from "./sound-board-export-service";
 import { SoundBoardValidationService } from "./sound-board-validation-service";
 import { SoundCandidateService } from "./sound-candidate-service";
 import { SoundChecklistService } from "./sound-checklist-service";
+import { SoundChangeReviewExportService } from "./sound-change-review-export-service";
+import { SoundChangeReviewService } from "./sound-change-review-service";
 import { SoundPackChangelogService } from "./sound-pack-changelog-service";
 import { SoundPackDiffService } from "./sound-pack-diff-service";
 import { SoundPackSnapshotService } from "./sound-pack-snapshot-service";
@@ -60,6 +62,8 @@ export interface AppServices {
   soundStyleGuideService: SoundStyleGuideService;
   soundChecklistService: SoundChecklistService;
   soundRequestExportService: SoundRequestExportService;
+  soundChangeReviewService: SoundChangeReviewService;
+  soundChangeReviewExportService: SoundChangeReviewExportService;
   soundPackSnapshotService: SoundPackSnapshotService;
   soundPackDiffService: SoundPackDiffService;
   soundPackChangelogService: SoundPackChangelogService;
@@ -89,7 +93,6 @@ export function createAppServices(userDataPath: string): AppServices {
   const soundUsageBulkImportService = new SoundUsageBulkImportService(libraryService, assetService);
   const soundUsageTemplateService = new SoundUsageTemplateService(libraryService, assetService);
   const soundBoardValidationService = new SoundBoardValidationService(libraryService, assetService, soundCandidateService);
-  const projectSoundPackService = new ProjectSoundPackService(libraryService, assetService, soundCandidateService);
   const soundWorkflowService = new SoundWorkflowService(libraryService, assetService, soundCandidateService);
   const soundStyleGuideService = new SoundStyleGuideService(libraryService);
   const soundChecklistService = new SoundChecklistService(libraryService);
@@ -102,7 +105,11 @@ export function createAppServices(userDataPath: string): AppServices {
     gameProjectService,
   );
   const soundPackDiffService = new SoundPackDiffService(soundPackSnapshotService);
-  const soundPackChangelogService = new SoundPackChangelogService(soundPackDiffService);
+  const soundChangeReviewService = new SoundChangeReviewService(libraryService, soundPackDiffService, gameProjectService);
+  const soundChangeReviewExportService = new SoundChangeReviewExportService(soundChangeReviewService);
+  soundBoardValidationService.setChangeReviewService(soundChangeReviewService);
+  const projectSoundPackService = new ProjectSoundPackService(libraryService, assetService, soundCandidateService, soundChangeReviewService);
+  const soundPackChangelogService = new SoundPackChangelogService(soundPackDiffService, soundChangeReviewService);
   const exportCenterService = new ExportCenterService(
     libraryService,
     assetService,
@@ -113,6 +120,7 @@ export function createAppServices(userDataPath: string): AppServices {
     soundRequestExportService,
     soundPackSnapshotService,
     soundPackChangelogService,
+    soundChangeReviewExportService,
   );
 
   return {
@@ -144,6 +152,8 @@ export function createAppServices(userDataPath: string): AppServices {
     soundStyleGuideService,
     soundChecklistService,
     soundRequestExportService,
+    soundChangeReviewService,
+    soundChangeReviewExportService,
     soundPackSnapshotService,
     soundPackDiffService,
     soundPackChangelogService,

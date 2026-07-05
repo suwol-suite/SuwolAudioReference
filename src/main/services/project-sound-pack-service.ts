@@ -5,6 +5,7 @@ import type { AssetListItem } from "../../shared/library-types";
 import type { AssetRightsMetadata } from "../../shared/export-types";
 import type {
   GameProjectRecord,
+  SoundChangeReviewDetail,
   SoundBoardValidationIssue,
   SoundUsageCandidateRecord,
   SoundUsageCategory,
@@ -22,6 +23,7 @@ import type {
   ProjectSoundPackPlannedFile,
   ProjectSoundPackProfile,
   ProjectSoundPackRenamePlanEntry,
+  ProjectSoundPackReviewSummary,
   ProjectSoundPackSummary,
   ProjectSoundPackUsageManifestItem,
 } from "../../shared/project-sound-pack-types";
@@ -33,6 +35,7 @@ import { GameProjectService } from "./game-project-service";
 import type { LibraryService } from "./library-service";
 import { SoundBoardValidationService } from "./sound-board-validation-service";
 import { SoundCandidateService } from "./sound-candidate-service";
+import type { SoundChangeReviewService } from "./sound-change-review-service";
 import { SoundChecklistService } from "./sound-checklist-service";
 import { SoundStyleGuideService } from "./sound-style-guide-service";
 import { SoundUsageService } from "./sound-usage-service";
@@ -74,6 +77,7 @@ interface ProjectSoundPackBuild extends ProjectSoundPackDryRun {
   boardValidationIssues: SoundBoardValidationIssue[];
   styleGuideMarkdown: string;
   checklistMarkdown: string;
+  latestReview: ProjectSoundPackReviewSummary | null;
 }
 
 export class ProjectSoundPackService {
@@ -87,10 +91,14 @@ export class ProjectSoundPackService {
     private readonly libraryService: LibraryService,
     private readonly assetService: AssetService,
     private readonly candidateService: SoundCandidateService,
+    private readonly changeReviewService?: SoundChangeReviewService,
   ) {
     this.projectService = new GameProjectService(libraryService);
     this.usageService = new SoundUsageService(libraryService, assetService);
     this.validationService = new SoundBoardValidationService(libraryService, assetService, candidateService);
+    if (changeReviewService) {
+      this.validationService.setChangeReviewService(changeReviewService);
+    }
     this.styleGuideService = new SoundStyleGuideService(libraryService);
     this.checklistService = new SoundChecklistService(libraryService);
   }
@@ -215,6 +223,7 @@ export class ProjectSoundPackService {
     const itemIdSet = options.usageItemIds.length > 0 ? new Set(options.usageItemIds) : null;
     const items = itemIdSet ? allItems.filter((item) => itemIdSet.has(item.id)) : allItems;
     const validation = await this.validationService.validateBoard(project.id);
+    const latestReview = createLatestReviewSummary(this.changeReviewService?.getLatest(project.id) ?? null);
     const candidatesByItemId = new Map<string, SoundUsageCandidateRecord[]>();
     const allCandidates: SoundUsageCandidateRecord[] = [];
     for (const item of items) {
@@ -331,6 +340,20 @@ export class ProjectSoundPackService {
         message: "No approved selected assets are available for this sound pack.",
       });
     }
+    if (latestReview && latestReview.pendingChanges > 0) {
+      pushIssue(warnings, {
+        severity: "warning",
+        code: "PENDING_CHANGE_REVIEW_ITEMS",
+        message: `Latest change review has ${latestReview.pendingChanges} pending item(s).`,
+      });
+    }
+    if (latestReview && latestReview.rejectedChangesStillPresent > 0) {
+      pushIssue(warnings, {
+        severity: "warning",
+        code: "REJECTED_CHANGE_STILL_PRESENT",
+        message: `Latest change review has ${latestReview.rejectedChangesStillPresent} rejected change(s) still present.`,
+      });
+    }
     if (!outputRoot.includes("<choose-folder>") && await pathExists(outputRoot)) {
       pushIssue(errors, {
         severity: "error",
@@ -393,6 +416,7 @@ export class ProjectSoundPackService {
       boardValidationIssues: validation.issues,
       styleGuideMarkdown: options.includeStyleGuide ? this.styleGuideService.createMarkdown(project.id) : "",
       checklistMarkdown: options.includeChecklist ? this.checklistService.createMarkdown(project.id) : "",
+      latestReview,
       projectId: project.id,
       projectName: project.name,
       engineProfile: options.engineProfile,
@@ -444,6 +468,8 @@ function normalizeOptions(input: ProjectSoundPackOptions): Required<ProjectSound
     includeReviewNotes: input.includeReviewNotes ?? false,
     includeCandidateReviewNotes: input.includeCandidateReviewNotes ?? false,
     includeDecisionNotes: input.includeDecisionNotes ?? false,
+    includeLatestChangeReviewSummary: input.includeLatestChangeReviewSummary ?? true,
+    includeReviewReport: input.includeReviewReport ?? false,
     copyAudioFiles: input.copyAudioFiles ?? true,
     filenamePolicy: input.filenamePolicy ?? "keep_original",
     blockIfRequiredMissing: input.blockIfRequiredMissing ?? false,
@@ -474,6 +500,7 @@ function stripBuild(build: ProjectSoundPackBuild): ProjectSoundPackDryRun {
     warnings: build.warnings,
     errors: build.errors,
     summary: build.summary,
+    latestReview: build.options.includeLatestChangeReviewSummary ? build.latestReview : null,
     outputTree: build.outputTree,
   };
 }
@@ -614,6 +641,7 @@ function createDocPlan(options: Required<ProjectSoundPackOptions>): ProjectSound
     options.includeValidationReport ? { type: "doc", relativePath: "validation-report.md" } : null,
     options.includeStyleGuide ? { type: "doc", relativePath: "style-guide.md" } : null,
     options.includeChecklist ? { type: "doc", relativePath: "checklist.md" } : null,
+    options.includeReviewReport ? { type: "doc", relativePath: "change-review-report.md" } : null,
   ].filter((file): file is ProjectSoundPackPlannedFile => Boolean(file));
 }
 
@@ -660,6 +688,9 @@ function renderTextFiles(build: ProjectSoundPackBuild): Array<{ relativePath: st
   if (build.options.includeChecklist) {
     files.push({ relativePath: "checklist.md", content: build.checklistMarkdown });
   }
+  if (build.options.includeReviewReport) {
+    files.push({ relativePath: "change-review-report.md", content: createReviewReport(build) });
+  }
   files.push({ relativePath: "metadata/usage-items.csv", content: createUsageItemsCsv(build) });
   files.push({ relativePath: "metadata/selected-assets.csv", content: createSelectedAssetsCsv(build) });
   files.push({ relativePath: "metadata/candidates.csv", content: createCandidatesCsv(build) });
@@ -686,6 +717,7 @@ function createProjectManifest(build: ProjectSoundPackBuild): Record<string, unk
     usages: createUsageManifestItems(build),
     renamePlan: build.renamePlan,
     validation: [...build.boardValidationIssues, ...build.warnings, ...build.errors],
+    latestReview: build.options.includeLatestChangeReviewSummary ? build.latestReview : undefined,
   };
 }
 
@@ -923,6 +955,29 @@ ${build.boardValidationIssues.length ? build.boardValidationIssues.map(formatIss
 `;
 }
 
+function createReviewReport(build: ProjectSoundPackBuild): string {
+  if (!build.latestReview) {
+    return "# Change Review Report\n\nNo change review has been created for this project.\n";
+  }
+  return `# Change Review Report
+
+Review: ${build.latestReview.reviewName}
+Status: ${build.latestReview.reviewStatus}
+
+Review approval does not modify audio mappings.
+
+## Summary
+
+* Pending: ${build.latestReview.pendingChanges}
+* Approved: ${build.latestReview.approvedChanges}
+* Rejected: ${build.latestReview.rejectedChanges}
+* Deferred: ${build.latestReview.deferredChanges}
+* Breaking: ${build.latestReview.summary.breaking}
+* Rights changes: ${build.latestReview.summary.rightsChanged}
+* Selected asset changes: ${build.latestReview.summary.selectedChanged}
+`;
+}
+
 function createUsageItemsCsv(build: ProjectSoundPackBuild): string {
   return toCsv(
     build.items.map((item) => ({
@@ -1049,6 +1104,23 @@ function countUnknownLicense(assets: PlannedUsageAsset[]): number {
 
 function countCreditRequired(assets: PlannedUsageAsset[]): number {
   return assets.filter((asset) => asset.rights.creditRequired === "yes").length;
+}
+
+function createLatestReviewSummary(review: SoundChangeReviewDetail | null): ProjectSoundPackReviewSummary | null {
+  if (!review) {
+    return null;
+  }
+  return {
+    reviewId: review.id,
+    reviewName: review.name,
+    reviewStatus: review.status,
+    pendingChanges: review.summary.pending,
+    approvedChanges: review.summary.approved,
+    rejectedChanges: review.summary.rejected,
+    deferredChanges: review.summary.deferred,
+    rejectedChangesStillPresent: review.summary.rejected,
+    summary: review.summary,
+  };
 }
 
 function isUnknownLicense(rights: AssetRightsMetadata): boolean {

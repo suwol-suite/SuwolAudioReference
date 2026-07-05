@@ -1390,6 +1390,64 @@ select {
   font-size: 12px;
 }
 
+.review-summary {
+  align-items: stretch;
+}
+
+.review-item-list {
+  display: grid;
+  gap: 8px;
+}
+
+.review-item-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 10px;
+}
+
+.review-item-card.severity-breaking {
+  border-color: rgba(255, 108, 108, 0.5);
+}
+
+.review-item-card.severity-warning {
+  border-color: rgba(245, 189, 91, 0.45);
+}
+
+.review-item-header,
+.review-item-diff {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.review-item-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.review-item-header strong,
+.review-item-diff span,
+.review-item-card p {
+  overflow-wrap: anywhere;
+}
+
+.review-item-header small,
+.review-item-diff {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-item-card textarea {
+  min-height: 52px;
+  resize: vertical;
+}
+
 .sound-panel-header h3,
 .sound-export-panel h3 {
   margin: 0;

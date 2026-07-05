@@ -73,6 +73,9 @@ export type SoundPackDiffChangeType =
   | "rights_changed"
   | "risk_changed";
 export type SoundPackChangelogFormat = "markdown" | "json" | "csv";
+export type SoundChangeReviewStatus = "draft" | "reviewing" | "approved" | "rejected" | "archived";
+export type SoundChangeReviewItemStatus = "pending" | "approved" | "rejected" | "deferred";
+export type SoundChangeReviewExportFormat = "markdown" | "json" | "csv";
 
 export interface GameProjectRecord {
   id: string;
@@ -543,7 +546,13 @@ export interface SoundBoardValidationIssue {
     | "WORK_NOTE_OPEN"
     | "STYLE_GUIDE_EMPTY"
     | "CHECKLIST_INCOMPLETE"
-    | "CANDIDATE_REVIEW_MISSING";
+    | "CANDIDATE_REVIEW_MISSING"
+    | "BASELINE_CHANGES_NO_REVIEW"
+    | "PENDING_BREAKING_CHANGES"
+    | "PENDING_SELECTED_ASSET_CHANGES"
+    | "PENDING_RIGHTS_CHANGES"
+    | "REJECTED_CHANGE_STILL_PRESENT"
+    | "APPROVED_EXPORT_PENDING_REVIEW";
   message: string;
   usageItemId?: string;
   usageKey?: string;
@@ -824,6 +833,11 @@ export interface SoundPackChangelogOptions extends SoundPackCompareInput {
   includeCandidateChanges?: boolean;
   includeRightsChanges?: boolean;
   includeRiskChanges?: boolean;
+  reviewId?: string;
+  includeReviewDecisions?: boolean;
+  approvedChangesOnly?: boolean;
+  excludeRejectedChanges?: boolean;
+  includeDeferredChanges?: boolean;
 }
 
 export interface SoundPackChangelogPreview {
@@ -836,6 +850,129 @@ export interface SoundPackChangelogPreview {
 
 export interface SoundPackChangelogResult extends SoundPackChangelogPreview {
   ok: boolean;
+  outputPath?: string;
+  files: string[];
+  error?: { code: string; message: string };
+}
+
+export interface SoundChangeReviewSummary {
+  totalChanges: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  deferred: number;
+  breaking: number;
+  warnings: number;
+  info: number;
+  newRisks: number;
+  resolvedRisks: number;
+  selectedChanged: number;
+  rightsChanged: number;
+}
+
+export interface SoundChangeReviewRecord {
+  id: string;
+  libraryId: string;
+  projectId: string;
+  name: string;
+  description: string;
+  fromSnapshotId: string | null;
+  toSnapshotId: string | null;
+  compareToCurrent: boolean;
+  status: SoundChangeReviewStatus;
+  summary: SoundChangeReviewSummary;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface SoundChangeReviewItemRecord {
+  id: string;
+  reviewId: string;
+  usageItemId: string | null;
+  usageKey: string;
+  changeType: SoundPackDiffChangeType;
+  severity: SoundPackDiffSeverity;
+  status: SoundChangeReviewItemStatus;
+  before: unknown;
+  after: unknown;
+  messageKey: string;
+  message: string;
+  field: string;
+  assetId: string | null;
+  reviewerNote: string;
+  decisionReason: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SoundChangeReviewDetail extends SoundChangeReviewRecord {
+  items: SoundChangeReviewItemRecord[];
+}
+
+export interface SoundChangeReviewCreateInput extends SoundPackCompareInput {
+  name?: string;
+  description?: string;
+  status?: SoundChangeReviewStatus;
+}
+
+export interface SoundChangeReviewBaselineInput {
+  projectId: string;
+  name?: string;
+  description?: string;
+}
+
+export interface SoundChangeReviewUpdateInput {
+  name?: string;
+  description?: string;
+  status?: SoundChangeReviewStatus;
+}
+
+export interface SoundChangeReviewItemUpdateInput {
+  status?: SoundChangeReviewItemStatus;
+  reviewerNote?: string;
+  decisionReason?: string;
+}
+
+export interface SoundChangeReviewBulkUpdateInput {
+  reviewId: string;
+  itemIds: string[];
+  status: SoundChangeReviewItemStatus;
+  decisionReason?: string;
+}
+
+export interface SoundChangeReviewListQuery {
+  projectId: string;
+  includeArchived?: boolean;
+}
+
+export interface SoundChangeReviewExportOptions {
+  reviewId: string;
+  format?: SoundChangeReviewExportFormat;
+  includePending?: boolean;
+  includeApproved?: boolean;
+  includeRejected?: boolean;
+  includeDeferred?: boolean;
+  includeReviewerNotes?: boolean;
+  includeDecisionReasons?: boolean;
+  includeRiskChanges?: boolean;
+  includeRightsChanges?: boolean;
+  includeBeforeAfterDetails?: boolean;
+  includeAbsolutePaths?: boolean;
+}
+
+export interface SoundChangeReviewExportPreview {
+  ok: boolean;
+  reviewId: string;
+  projectId: string;
+  format: SoundChangeReviewExportFormat;
+  fileName: string;
+  itemCount: number;
+  summary: SoundChangeReviewSummary;
+  previewText: string;
+}
+
+export interface SoundChangeReviewExportResult extends SoundChangeReviewExportPreview {
   outputPath?: string;
   files: string[];
   error?: { code: string; message: string };

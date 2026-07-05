@@ -322,6 +322,15 @@ Phase 13 sound pack snapshot notes:
 - A frozen snapshot can be marked as the project baseline, compared against the current board, and exported through Export Center as snapshot JSON or changelog Markdown/JSON/CSV.
 - Rollback is preview-first and only restores existing candidate selected/approved flags for matching usage keys and candidates. It does not create/delete assets, move source audio, or modify engine project files.
 
+Phase 14 sound change review notes:
+
+- Sound Usage Board can create Change Reviews from a baseline snapshot or from two selected snapshots, using the snapshot diff as the review item snapshot.
+- Review items can be approved, rejected, or deferred with reviewer notes and decision reasons. These decisions are records only and never modify selected/approved mappings automatically.
+- The review board shows pending, approved, rejected, deferred, breaking, selection-change, rights-change, and risk-change counts with filters for item status and severity.
+- Export Center can export Change Review Markdown/JSON/CSV reports and can include review decisions in Sound Pack Changelog output.
+- Project Sound Pack preview can show the latest review summary and include a local review report file, while still leaving source audio and engine project files untouched.
+- Validation adds warnings for missing baseline reviews, pending breaking/selection/rights changes, rejected changes still present, and pending review items during approved export workflows.
+
 ## Logs And Troubleshooting
 
 - Logs are stored under the app user-data folder, in `logs/app.log`.

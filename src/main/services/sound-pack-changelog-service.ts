@@ -7,23 +7,36 @@ import type {
   SoundPackChangelogResult,
   SoundPackDiffChange,
   SoundPackDiffResult,
+  SoundPackDiffSummary,
 } from "../../shared/sound-board-types";
 import { toCsv } from "./game-audio-manifest-service";
+import type { SoundChangeReviewService } from "./sound-change-review-service";
 import type { SoundPackDiffService } from "./sound-pack-diff-service";
 
+type ReviewAnnotatedChange = SoundPackDiffChange & {
+  reviewDecision?: {
+    status: string;
+    reviewerNote: string;
+    decisionReason: string;
+  };
+};
+
 export class SoundPackChangelogService {
-  constructor(private readonly diffService: SoundPackDiffService) {}
+  constructor(
+    private readonly diffService: SoundPackDiffService,
+    private readonly reviewService?: SoundChangeReviewService,
+  ) {}
 
   async preview(input: SoundPackChangelogOptions): Promise<SoundPackChangelogPreview> {
     const format = input.format ?? "markdown";
     const diff = await this.diffService.compare(input);
-    const filtered = filterDiff(diff, input);
+    const filtered = this.filterDiff(diff, input);
     return {
       projectId: diff.projectId,
       format,
       fileName: fileNameForFormat(format),
       diff: filtered,
-      previewText: renderChangelog(filtered, format),
+      previewText: renderChangelog(filtered, format, input),
     };
   }
 
@@ -53,31 +66,52 @@ export class SoundPackChangelogService {
       };
     }
   }
+  private filterDiff(diff: SoundPackDiffResult, options: SoundPackChangelogOptions): SoundPackDiffResult {
+    const decisions = options.reviewId && this.reviewService ? this.reviewService.createDecisionMap(options.reviewId) : new Map();
+    const changes = diff.changes
+      .map((change): ReviewAnnotatedChange | null => {
+        if (options.includeCandidateChanges === false && (change.type === "candidate_added" || change.type === "candidate_removed")) {
+          return null;
+        }
+        if (options.includeRightsChanges === false && change.type === "rights_changed") {
+          return null;
+        }
+        if (options.includeRiskChanges === false && change.type === "risk_changed") {
+          return null;
+        }
+        const decision = this.reviewService ? decisions.get(this.reviewService.decisionKeyForChange(change)) : undefined;
+        if (options.approvedChangesOnly && decision?.status !== "approved") {
+          return null;
+        }
+        if (options.excludeRejectedChanges && decision?.status === "rejected") {
+          return null;
+        }
+        if (options.includeDeferredChanges === false && decision?.status === "deferred") {
+          return null;
+        }
+        return options.includeReviewDecisions && decision
+          ? {
+              ...change,
+              reviewDecision: {
+                status: decision.status,
+                reviewerNote: decision.reviewerNote,
+                decisionReason: decision.decisionReason,
+              },
+            }
+          : change;
+      })
+      .filter((change): change is ReviewAnnotatedChange => Boolean(change));
+    return { ...diff, summary: summarizeFilteredChanges(changes), changes };
+  }
 }
 
-function filterDiff(diff: SoundPackDiffResult, options: SoundPackChangelogOptions): SoundPackDiffResult {
-  const changes = diff.changes.filter((change) => {
-    if (options.includeCandidateChanges === false && (change.type === "candidate_added" || change.type === "candidate_removed")) {
-      return false;
-    }
-    if (options.includeRightsChanges === false && change.type === "rights_changed") {
-      return false;
-    }
-    if (options.includeRiskChanges === false && change.type === "risk_changed") {
-      return false;
-    }
-    return true;
-  });
-  return { ...diff, changes };
-}
-
-function renderChangelog(diff: SoundPackDiffResult, format: SoundPackChangelogFormat): string {
+function renderChangelog(diff: SoundPackDiffResult, format: SoundPackChangelogFormat, options: SoundPackChangelogOptions): string {
   if (format === "json") {
     return `${JSON.stringify(diff, null, 2)}\n`;
   }
   if (format === "csv") {
     return toCsv(
-      diff.changes.map((change) => ({
+      (diff.changes as ReviewAnnotatedChange[]).map((change) => ({
         severity: change.severity,
         type: change.type,
         usageKey: change.usageKey,
@@ -86,6 +120,9 @@ function renderChangelog(diff: SoundPackDiffResult, format: SoundPackChangelogFo
         before: stringifyCell(change.before),
         after: stringifyCell(change.after),
         message: change.message,
+        reviewStatus: options.includeReviewDecisions ? change.reviewDecision?.status ?? "" : "",
+        reviewerNote: options.includeReviewDecisions ? change.reviewDecision?.reviewerNote ?? "" : "",
+        decisionReason: options.includeReviewDecisions ? change.reviewDecision?.decisionReason ?? "" : "",
       })),
     );
   }
@@ -111,9 +148,32 @@ function renderChangelog(diff: SoundPackDiffResult, format: SoundPackChangelogFo
     "",
     ...(diff.changes.length === 0
       ? ["No sound pack changes detected."]
-      : diff.changes.map((change) => `- [${change.severity}] ${change.type} / ${change.message}`)),
+      : (diff.changes as ReviewAnnotatedChange[]).map((change) => {
+          const base = `- [${change.severity}] ${change.type} / ${change.message}`;
+          if (!options.includeReviewDecisions || !change.reviewDecision) {
+            return base;
+          }
+          const decision = change.reviewDecision.decisionReason ? ` - Decision: ${change.reviewDecision.decisionReason}` : "";
+          return `${base} - Review: ${change.reviewDecision.status}${decision}`;
+        })),
     "",
   ].join("\n");
+}
+
+function summarizeFilteredChanges(changes: SoundPackDiffChange[]): SoundPackDiffSummary {
+  return {
+    addedUsageItems: changes.filter((change) => change.type === "usage_added").length,
+    removedUsageItems: changes.filter((change) => change.type === "usage_removed").length,
+    changedUsageItems: new Set(changes.filter((change) => change.type === "usage_changed").map((change) => change.usageKey)).size,
+    selectionChanges: changes.filter((change) => change.type === "selection_changed").length,
+    approvalChanges: changes.filter((change) => change.type === "approval_changed").length,
+    candidateChanges: changes.filter((change) => change.type === "candidate_added" || change.type === "candidate_removed").length,
+    assetChanges: changes.filter((change) => change.type === "asset_changed").length,
+    rightsChanges: changes.filter((change) => change.type === "rights_changed").length,
+    riskChanges: changes.filter((change) => change.type === "risk_changed").length,
+    breakingChanges: changes.filter((change) => change.severity === "breaking").length,
+    warnings: changes.filter((change) => change.severity === "warning").length,
+  };
 }
 
 function fileNameForFormat(format: SoundPackChangelogFormat): string {

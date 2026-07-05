@@ -25,7 +25,10 @@ export type ExportTargetType =
   | "sound_pack_snapshot_json"
   | "sound_pack_changelog_markdown"
   | "sound_pack_changelog_json"
-  | "sound_pack_changelog_csv";
+  | "sound_pack_changelog_csv"
+  | "sound_change_review_markdown"
+  | "sound_change_review_json"
+  | "sound_change_review_csv";
 
 export type ExportPresetType =
   | "codex_instruction"
@@ -47,7 +50,10 @@ export type ExportPresetType =
   | "sound_pack_snapshot_json"
   | "sound_pack_changelog_markdown"
   | "sound_pack_changelog_json"
-  | "sound_pack_changelog_csv";
+  | "sound_pack_changelog_csv"
+  | "sound_change_review_markdown"
+  | "sound_change_review_json"
+  | "sound_change_review_csv";
 
 export type ExportSource =
   | { type: "selected"; assetIds: string[] }
@@ -152,6 +158,20 @@ export interface ExportOptions {
   includeRightsChanges?: boolean;
   includeRiskChanges?: boolean;
   includeCandidateChanges?: boolean;
+  reviewId?: string;
+  includePending?: boolean;
+  includeApproved?: boolean;
+  includeRejected?: boolean;
+  includeDeferred?: boolean;
+  includeReviewerNotes?: boolean;
+  includeDecisionReasons?: boolean;
+  includeBeforeAfterDetails?: boolean;
+  includeReviewDecisions?: boolean;
+  approvedChangesOnly?: boolean;
+  excludeRejectedChanges?: boolean;
+  includeDeferredChanges?: boolean;
+  includeLatestChangeReviewSummary?: boolean;
+  includeReviewReport?: boolean;
 }
 
 export interface ExportValidationIssue {
@@ -252,6 +272,7 @@ export interface ExportHistoryRecord {
   snapshotId?: string | null;
   baselineSnapshotId?: string | null;
   diffSummary?: Record<string, unknown> | null;
+  reviewId?: string | null;
 }
 
 export interface ExportHistoryListQuery {

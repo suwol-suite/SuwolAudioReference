@@ -46,6 +46,7 @@ import { ProjectChecklistPanel } from "./ProjectChecklistPanel";
 import { ProjectStyleGuidePanel } from "./ProjectStyleGuidePanel";
 import { SoundBoardDashboard } from "./SoundBoardDashboard";
 import { SoundBoardValidationPanel } from "./SoundBoardValidationPanel";
+import { SoundChangeReviewPanel } from "./SoundChangeReviewPanel";
 import { SoundPackSnapshotPanel } from "./SoundPackSnapshotPanel";
 import { SoundWorkTodoBoard } from "./SoundWorkTodoBoard";
 import { EmptyState } from "./ui/EmptyState";
@@ -846,6 +847,14 @@ export function SoundUsageBoardDialog({
                       await refreshBoard(activeProject.id);
                     }}
                     onOpenExportCenter={onOpenExportCenter}
+                  />
+                ) : null}
+                {activeProject ? (
+                  <SoundChangeReviewPanel
+                    project={activeProject}
+                    disabled={busy}
+                    onOpenExportCenter={onOpenExportCenter}
+                    onSelectUsageItem={setSelectedItemId}
                   />
                 ) : null}
               </>

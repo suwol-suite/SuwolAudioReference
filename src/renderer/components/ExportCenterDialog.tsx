@@ -63,6 +63,9 @@ const TARGET_OPTIONS: ExportTargetType[] = [
   "sound_pack_changelog_markdown",
   "sound_pack_changelog_json",
   "sound_pack_changelog_csv",
+  "sound_change_review_markdown",
+  "sound_change_review_json",
+  "sound_change_review_csv",
 ];
 
 const PROJECT_TARGET_OPTIONS = new Set<ExportTargetType>([
@@ -79,6 +82,9 @@ const PROJECT_TARGET_OPTIONS = new Set<ExportTargetType>([
   "sound_pack_changelog_markdown",
   "sound_pack_changelog_json",
   "sound_pack_changelog_csv",
+  "sound_change_review_markdown",
+  "sound_change_review_json",
+  "sound_change_review_csv",
 ]);
 
 const ENGINE_OPTIONS: ProjectSoundPackEngineProfile[] = ["generic", "unity", "unreal", "monogame"];
@@ -161,6 +167,11 @@ export function ExportCenterDialog({
     "sound_pack_changelog_markdown",
     "sound_pack_changelog_json",
     "sound_pack_changelog_csv",
+  ].includes(options.target);
+  const isSoundChangeReviewTarget = [
+    "sound_change_review_markdown",
+    "sound_change_review_json",
+    "sound_change_review_csv",
   ].includes(options.target);
   const needsProjectEngineOptions = ["project_sound_pack", "project_manifest", "project_codex_instruction"].includes(options.target);
   const isManifestTarget = !isProjectTarget && !isCodexTarget && options.target !== "sound_pack_folder" && options.target !== "sound_pack_metadata" && options.target !== "csv_report";
@@ -271,9 +282,23 @@ export function ExportCenterDialog({
           includeCandidateChanges: options.includeCandidateChanges,
           includeRightsChanges: options.includeRightsChanges,
           includeRiskChanges: options.includeRiskChanges,
+          reviewId: options.reviewId,
+          includeReviewDecisions: options.includeReviewDecisions,
+          approvedChangesOnly: options.approvedChangesOnly,
+          excludeRejectedChanges: options.excludeRejectedChanges,
+          includeDeferredChanges: options.includeDeferredChanges,
         });
         setProjectSoundPackPreview(null);
         setPreviewText(changelogPreview.previewText);
+      } else if (isSoundChangeReviewTarget && options.source.type === "gameProject") {
+        if (!options.reviewId) {
+          setProjectSoundPackPreview(null);
+          setPreviewText("");
+          return;
+        }
+        const reviewPreview = await window.suwolAudio.changeReviews.exportPreview(toSoundChangeReviewExportOptions(options));
+        setProjectSoundPackPreview(null);
+        setPreviewText(reviewPreview.previewText);
       } else if (isSnapshotTarget && options.source.type === "gameProject") {
         const snapshot = options.snapshotId
           ? await window.suwolAudio.soundSnapshots.get(options.snapshotId)
@@ -617,6 +642,58 @@ export function ExportCenterDialog({
                     <input type="checkbox" checked={options.createSnapshotBeforeExport ?? false} onChange={(event) => updateOptions({ createSnapshotBeforeExport: event.target.checked })} />
                     {t("export.createSnapshotBeforeExport" as MessageKey)}
                   </label>
+                  {isSoundPackChangelogTarget ? (
+                    <>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeReviewDecisions ?? false} onChange={(event) => updateOptions({ includeReviewDecisions: event.target.checked })} />
+                        {t("export.includeReviewDecisions" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.approvedChangesOnly ?? false} onChange={(event) => updateOptions({ approvedChangesOnly: event.target.checked })} />
+                        {t("export.approvedChangesOnly" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.excludeRejectedChanges ?? false} onChange={(event) => updateOptions({ excludeRejectedChanges: event.target.checked })} />
+                        {t("export.excludeRejectedChanges" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeDeferredChanges ?? true} onChange={(event) => updateOptions({ includeDeferredChanges: event.target.checked })} />
+                        {t("export.includeDeferredChanges" as MessageKey)}
+                      </label>
+                    </>
+                  ) : null}
+                  {isSoundChangeReviewTarget ? (
+                    <>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includePending ?? true} onChange={(event) => updateOptions({ includePending: event.target.checked })} />
+                        {t("export.includePending" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeApproved ?? true} onChange={(event) => updateOptions({ includeApproved: event.target.checked })} />
+                        {t("export.includeApproved" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeRejected ?? true} onChange={(event) => updateOptions({ includeRejected: event.target.checked })} />
+                        {t("export.includeRejected" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeDeferred ?? true} onChange={(event) => updateOptions({ includeDeferred: event.target.checked })} />
+                        {t("export.includeDeferred" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeReviewerNotes ?? true} onChange={(event) => updateOptions({ includeReviewerNotes: event.target.checked })} />
+                        {t("export.includeReviewerNotes" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeDecisionReasons ?? true} onChange={(event) => updateOptions({ includeDecisionReasons: event.target.checked })} />
+                        {t("export.includeDecisionReasons" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeBeforeAfterDetails ?? false} onChange={(event) => updateOptions({ includeBeforeAfterDetails: event.target.checked })} />
+                        {t("export.includeBeforeAfterDetails" as MessageKey)}
+                      </label>
+                    </>
+                  ) : null}
                   {options.target === "project_sound_pack" ? (
                     <>
                       <label className="settings-toggle">
@@ -626,6 +703,14 @@ export function ExportCenterDialog({
                       <label className="settings-toggle">
                         <input type="checkbox" checked={options.copyAudioFiles} onChange={(event) => updateOptions({ copyAudioFiles: event.target.checked })} />
                         {t("export.copyAudioFiles")}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeLatestChangeReviewSummary ?? true} onChange={(event) => updateOptions({ includeLatestChangeReviewSummary: event.target.checked })} />
+                        {t("export.includeLatestChangeReviewSummary" as MessageKey)}
+                      </label>
+                      <label className="settings-toggle">
+                        <input type="checkbox" checked={options.includeReviewReport ?? false} onChange={(event) => updateOptions({ includeReviewReport: event.target.checked })} />
+                        {t("export.includeReviewReport" as MessageKey)}
                       </label>
                     </>
                   ) : null}
@@ -726,6 +811,19 @@ function createDefaultOptions(selectedAssetIds: string[], currentQuery: AssetLis
     includeRightsChanges: true,
     includeRiskChanges: true,
     includeCandidateChanges: true,
+    includePending: true,
+    includeApproved: true,
+    includeRejected: true,
+    includeDeferred: true,
+    includeReviewerNotes: true,
+    includeDecisionReasons: true,
+    includeBeforeAfterDetails: false,
+    includeReviewDecisions: false,
+    approvedChangesOnly: false,
+    excludeRejectedChanges: false,
+    includeDeferredChanges: true,
+    includeLatestChangeReviewSummary: true,
+    includeReviewReport: false,
   };
 }
 
@@ -755,9 +853,28 @@ function toProjectSoundPackOptions(options: ExportOptions): ProjectSoundPackOpti
     includeReviewNotes: options.includeReviewNotes,
     includeCandidateReviewNotes: options.includeCandidateReviewNotes,
     includeDecisionNotes: options.includeDecisionNotes,
+    includeLatestChangeReviewSummary: options.includeLatestChangeReviewSummary,
+    includeReviewReport: options.includeReviewReport,
     copyAudioFiles: options.copyAudioFiles,
     filenamePolicy: options.filenamePolicy,
     acknowledgeWarnings: options.acknowledgeWarnings,
+  };
+}
+
+function toSoundChangeReviewExportOptions(options: ExportOptions) {
+  return {
+    reviewId: options.reviewId ?? "",
+    format: soundChangeReviewFormatForTarget(options.target),
+    includePending: options.includePending,
+    includeApproved: options.includeApproved,
+    includeRejected: options.includeRejected,
+    includeDeferred: options.includeDeferred,
+    includeReviewerNotes: options.includeReviewerNotes,
+    includeDecisionReasons: options.includeDecisionReasons,
+    includeRiskChanges: options.includeRiskChanges,
+    includeRightsChanges: options.includeRightsChanges,
+    includeBeforeAfterDetails: options.includeBeforeAfterDetails,
+    includeAbsolutePaths: options.includeAbsolutePaths,
   };
 }
 
@@ -806,6 +923,16 @@ function soundPackChangelogFormatForTarget(target: ExportTargetType): "markdown"
     return "json";
   }
   if (target === "sound_pack_changelog_csv") {
+    return "csv";
+  }
+  return "markdown";
+}
+
+function soundChangeReviewFormatForTarget(target: ExportTargetType): "markdown" | "json" | "csv" {
+  if (target === "sound_change_review_json") {
+    return "json";
+  }
+  if (target === "sound_change_review_csv") {
     return "csv";
   }
   return "markdown";

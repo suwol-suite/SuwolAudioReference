@@ -26,6 +26,10 @@ import type {
   SoundBoardExportOptions,
   SoundBoardExportPreview,
   SoundBoardExportResult,
+  SoundChangeReviewExportFormat,
+  SoundChangeReviewExportOptions,
+  SoundChangeReviewExportPreview,
+  SoundChangeReviewExportResult,
   SoundPackChangelogFormat,
   SoundPackChangelogOptions,
   SoundPackChangelogPreview,
@@ -49,6 +53,7 @@ import type { GameProjectService } from "./game-project-service";
 import type { ProjectSoundPackService } from "./project-sound-pack-service";
 import type { SoundBoardExportService } from "./sound-board-export-service";
 import type { SoundBoardValidationService } from "./sound-board-validation-service";
+import type { SoundChangeReviewExportService } from "./sound-change-review-export-service";
 import type { SoundPackChangelogService } from "./sound-pack-changelog-service";
 import type { SoundPackSnapshotService } from "./sound-pack-snapshot-service";
 import type { SoundRequestExportService } from "./sound-request-export-service";
@@ -95,6 +100,7 @@ interface ExportHistoryRow {
   snapshot_id: string | null;
   baseline_snapshot_id: string | null;
   diff_summary_json: string | null;
+  review_id: string | null;
 }
 
 interface PreparedExport {
@@ -148,6 +154,19 @@ const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   includeRightsChanges: true,
   includeRiskChanges: true,
   includeCandidateChanges: true,
+  includePending: true,
+  includeApproved: true,
+  includeRejected: true,
+  includeDeferred: true,
+  includeReviewerNotes: true,
+  includeDecisionReasons: true,
+  includeBeforeAfterDetails: false,
+  includeReviewDecisions: false,
+  approvedChangesOnly: false,
+  excludeRejectedChanges: false,
+  includeDeferredChanges: true,
+  includeLatestChangeReviewSummary: true,
+  includeReviewReport: false,
 };
 
 const PROJECT_EXPORT_TARGETS = new Set<ExportTargetType>([
@@ -164,6 +183,9 @@ const PROJECT_EXPORT_TARGETS = new Set<ExportTargetType>([
   "sound_pack_changelog_markdown",
   "sound_pack_changelog_json",
   "sound_pack_changelog_csv",
+  "sound_change_review_markdown",
+  "sound_change_review_json",
+  "sound_change_review_csv",
 ]);
 
 const BUILT_IN_PRESETS: ExportPresetRecord[] = [
@@ -310,6 +332,24 @@ const BUILT_IN_PRESETS: ExportPresetRecord[] = [
     updatedAt: "",
   },
   {
+    id: "built-in-sound-change-review",
+    libraryId: null,
+    name: "Sound Change Review Markdown",
+    type: "sound_change_review_markdown",
+    config: {
+      target: "sound_change_review_markdown",
+      includePending: true,
+      includeApproved: true,
+      includeRejected: true,
+      includeDeferred: true,
+      includeReviewerNotes: true,
+      includeDecisionReasons: true,
+    },
+    builtIn: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
     id: "built-in-project-style-guide",
     libraryId: null,
     name: "Project Style Guide Markdown",
@@ -346,6 +386,7 @@ export class ExportCenterService {
     private readonly soundRequestExportService?: SoundRequestExportService,
     private readonly soundPackSnapshotService?: SoundPackSnapshotService,
     private readonly soundPackChangelogService?: SoundPackChangelogService,
+    private readonly soundChangeReviewExportService?: SoundChangeReviewExportService,
   ) {}
 
   async preview(input: Partial<ExportOptions>, outputDirectory?: string): Promise<ExportPreview> {
@@ -669,6 +710,10 @@ export class ExportCenterService {
         const requestPreview = await this.requireSoundPackChangelogService().preview(await this.toSoundPackChangelogOptions(options));
         return mapChangelogPreview(options, requestPreview, outputDirectory);
       }
+      if (isSoundChangeReviewTarget(options.target)) {
+        const reviewPreview = this.requireSoundChangeReviewExportService().preview(toSoundChangeReviewExportOptions(options));
+        return mapChangeReviewPreview(options, reviewPreview, outputDirectory);
+      }
       if (isSoundRequestTarget(options.target)) {
         const requestPreview = await this.requireSoundRequestExportService().preview(toSoundRequestExportOptions(options), outputDirectory);
         return mapSoundRequestPreview(options, requestPreview);
@@ -720,6 +765,8 @@ export class ExportCenterService {
           ? await this.runSnapshotExport(exportOptions, outputDirectory)
         : isSoundPackChangelogTarget(options.target)
             ? mapChangelogResult(await this.requireSoundPackChangelogService().export(await this.toSoundPackChangelogOptions(exportOptions), outputDirectory))
+            : isSoundChangeReviewTarget(options.target)
+              ? mapChangeReviewResult(await this.requireSoundChangeReviewExportService().export(toSoundChangeReviewExportOptions(exportOptions), outputDirectory))
             : isSoundRequestTarget(options.target)
               ? mapSoundRequestResult(await this.requireSoundRequestExportService().export(toSoundRequestExportOptions(exportOptions), outputDirectory))
               : mapSoundBoardResult(await this.requireSoundBoardExportService().run(toSoundBoardExportOptions(exportOptions), outputDirectory));
@@ -766,6 +813,13 @@ export class ExportCenterService {
       throw new Error("Sound pack changelog service is not available.");
     }
     return this.soundPackChangelogService;
+  }
+
+  private requireSoundChangeReviewExportService(): SoundChangeReviewExportService {
+    if (!this.soundChangeReviewExportService) {
+      throw new Error("Sound change review export service is not available.");
+    }
+    return this.soundChangeReviewExportService;
   }
 
   private async resolveSnapshotForExport(options: ExportOptions): Promise<SoundPackSnapshotDetail> {
@@ -834,6 +888,11 @@ export class ExportCenterService {
       includeCandidateChanges: options.includeCandidateChanges,
       includeRightsChanges: options.includeRightsChanges,
       includeRiskChanges: options.includeRiskChanges,
+      reviewId: options.reviewId,
+      includeReviewDecisions: options.includeReviewDecisions,
+      approvedChangesOnly: options.approvedChangesOnly,
+      excludeRejectedChanges: options.excludeRejectedChanges,
+      includeDeferredChanges: options.includeDeferredChanges,
     };
   }
 
@@ -854,9 +913,9 @@ export class ExportCenterService {
       INSERT INTO export_history (
         id, library_id, created_at, status, target, source_label, output_path,
         files_json, summary_json, error_code, error_message, options_json, project_id,
-        snapshot_id, baseline_snapshot_id, diff_summary_json
+        snapshot_id, baseline_snapshot_id, diff_summary_json, review_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         randomUUID(),
@@ -875,6 +934,7 @@ export class ExportCenterService {
         options.snapshotId ?? options.fromSnapshotId ?? null,
         options.baselineSnapshotId ?? null,
         null,
+        options.reviewId ?? null,
       ],
     );
   }
@@ -1318,6 +1378,12 @@ function fileNameForTarget(target: ExportTargetType): string {
       return "sound-pack-changelog.json";
     case "sound_pack_changelog_csv":
       return "sound-pack-changelog.csv";
+    case "sound_change_review_markdown":
+      return "sound-change-review.md";
+    case "sound_change_review_json":
+      return "sound-change-review.json";
+    case "sound_change_review_csv":
+      return "sound-change-review.csv";
     case "generic_manifest":
     default:
       return "suwol-audio-manifest.json";
@@ -1332,14 +1398,15 @@ function kindForTarget(target: ExportTargetType): ExportPreview["plannedFiles"][
     target === "sound_request_markdown" ||
     target === "project_style_guide_markdown" ||
     target === "project_checklist_markdown" ||
-    target === "sound_pack_changelog_markdown"
+    target === "sound_pack_changelog_markdown" ||
+    target === "sound_change_review_markdown"
   ) {
     return "markdown";
   }
-  if (target === "unreal_csv" || target === "csv_report" || target === "sound_request_csv" || target === "sound_pack_changelog_csv") {
+  if (target === "unreal_csv" || target === "csv_report" || target === "sound_request_csv" || target === "sound_pack_changelog_csv" || target === "sound_change_review_csv") {
     return "csv";
   }
-  if (target === "sound_request_json" || target === "sound_pack_changelog_json" || target === "sound_pack_snapshot_json") {
+  if (target === "sound_request_json" || target === "sound_pack_changelog_json" || target === "sound_pack_snapshot_json" || target === "sound_change_review_json") {
     return "json";
   }
   if (target === "monogame_content") {
@@ -1428,11 +1495,29 @@ function isSoundPackChangelogTarget(target: ExportTargetType): boolean {
   );
 }
 
+function isSoundChangeReviewTarget(target: ExportTargetType): boolean {
+  return (
+    target === "sound_change_review_markdown" ||
+    target === "sound_change_review_json" ||
+    target === "sound_change_review_csv"
+  );
+}
+
 function changelogFormatForTarget(target: ExportTargetType): SoundPackChangelogFormat {
   if (target === "sound_pack_changelog_json") {
     return "json";
   }
   if (target === "sound_pack_changelog_csv") {
+    return "csv";
+  }
+  return "markdown";
+}
+
+function reviewFormatForTarget(target: ExportTargetType): SoundChangeReviewExportFormat {
+  if (target === "sound_change_review_json") {
+    return "json";
+  }
+  if (target === "sound_change_review_csv") {
     return "csv";
   }
   return "markdown";
@@ -1473,6 +1558,8 @@ function toProjectSoundPackOptions(options: ExportOptions): ProjectSoundPackOpti
     includeReviewNotes: options.includeReviewNotes,
     includeCandidateReviewNotes: options.includeCandidateReviewNotes,
     includeDecisionNotes: options.includeDecisionNotes,
+    includeLatestChangeReviewSummary: options.includeLatestChangeReviewSummary,
+    includeReviewReport: options.includeReviewReport,
     copyAudioFiles: options.copyAudioFiles,
     filenamePolicy: options.filenamePolicy,
     acknowledgeWarnings: options.acknowledgeWarnings,
@@ -1523,6 +1610,23 @@ function toSoundRequestExportOptions(options: ExportOptions): SoundRequestExport
     includeDecisionNotes: options.includeDecisionNotes,
     includeAbsolutePaths: options.includeAbsolutePaths,
     includeRights: options.includeRights,
+  };
+}
+
+function toSoundChangeReviewExportOptions(options: ExportOptions): SoundChangeReviewExportOptions {
+  return {
+    reviewId: options.reviewId ?? "",
+    format: reviewFormatForTarget(options.target),
+    includePending: options.includePending,
+    includeApproved: options.includeApproved,
+    includeRejected: options.includeRejected,
+    includeDeferred: options.includeDeferred,
+    includeReviewerNotes: options.includeReviewerNotes,
+    includeDecisionReasons: options.includeDecisionReasons,
+    includeRiskChanges: options.includeRiskChanges,
+    includeRightsChanges: options.includeRightsChanges,
+    includeBeforeAfterDetails: options.includeBeforeAfterDetails,
+    includeAbsolutePaths: options.includeAbsolutePaths,
   };
 }
 
@@ -1676,6 +1780,24 @@ function mapChangelogPreview(options: ExportOptions, preview: SoundPackChangelog
   };
 }
 
+function mapChangeReviewPreview(options: ExportOptions, preview: SoundChangeReviewExportPreview, outputDirectory?: string): ExportPreview {
+  const base = outputDirectory ?? "<choose-folder>";
+  return {
+    ok: preview.ok,
+    target: options.target,
+    assetCount: preview.itemCount,
+    exportSourceLabel: preview.reviewId,
+    issues: preview.summary.pending > 0
+      ? [{
+          severity: "warning",
+          code: "PROJECT_SOUND_PACK_VALIDATION_BLOCKED",
+          message: `${preview.summary.pending} change review item(s) are still pending.`,
+        }]
+      : [],
+    plannedFiles: [{ path: join(base, preview.fileName), kind: kindForTarget(options.target) }],
+  };
+}
+
 function mapProjectSoundPackResult(result: ProjectSoundPackExportResult): ExportRunResult {
   return {
     ok: result.ok,
@@ -1719,6 +1841,22 @@ function mapChangelogResult(result: SoundPackChangelogResult): ExportRunResult {
       skipped: 0,
       failed: result.ok ? 0 : 1,
       warnings: result.diff.summary.warnings > 0 ? [`${result.diff.summary.warnings} warning change(s) detected.`] : [],
+    },
+    error: result.error,
+  };
+}
+
+function mapChangeReviewResult(result: SoundChangeReviewExportResult): ExportRunResult {
+  return {
+    ok: result.ok,
+    outputPath: result.outputPath,
+    files: result.files,
+    summary: {
+      requested: result.itemCount,
+      exported: result.ok ? result.files.length : 0,
+      skipped: 0,
+      failed: result.ok ? 0 : 1,
+      warnings: result.summary.pending > 0 ? [`${result.summary.pending} pending review item(s).`] : [],
     },
     error: result.error,
   };
@@ -1778,6 +1916,9 @@ function mapProjectSoundPackIssueCode(code: string): ExportValidationIssue["code
   if (code === "PLAYBACK_UNSUPPORTED") {
     return "PLAYBACK_UNSUPPORTED";
   }
+  if (code === "PENDING_CHANGE_REVIEW_ITEMS" || code === "REJECTED_CHANGE_STILL_PRESENT") {
+    return "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
+  }
   return "PROJECT_SOUND_PACK_VALIDATION_BLOCKED";
 }
 
@@ -1823,5 +1964,9 @@ function mapHistoryRow(row: ExportHistoryRow): ExportHistoryRecord {
     errorCode: row.error_code,
     errorMessage: row.error_message,
     options: parseJson<Partial<ExportOptions>>(row.options_json) ?? {},
+    snapshotId: row.snapshot_id,
+    baselineSnapshotId: row.baseline_snapshot_id,
+    diffSummary: parseJson<Record<string, unknown>>(row.diff_summary_json ?? "null"),
+    reviewId: row.review_id,
   };
 }

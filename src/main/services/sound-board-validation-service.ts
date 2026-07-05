@@ -10,6 +10,7 @@ import type {
 import type { AssetService } from "./asset-service";
 import { sanitizeEngineKey } from "./game-audio-manifest-service";
 import type { LibraryService } from "./library-service";
+import type { SoundChangeReviewService } from "./sound-change-review-service";
 import { isValidUsageKey, sanitizeUsageKey } from "./sound-board-helpers";
 import { SoundChecklistService } from "./sound-checklist-service";
 import { SoundCandidateService } from "./sound-candidate-service";
@@ -42,6 +43,7 @@ export class SoundBoardValidationService {
   private readonly usageService: SoundUsageService;
   private readonly styleGuideService: SoundStyleGuideService;
   private readonly checklistService: SoundChecklistService;
+  private changeReviewService: SoundChangeReviewService | null = null;
 
   constructor(
     private readonly libraryService: LibraryService,
@@ -51,6 +53,10 @@ export class SoundBoardValidationService {
     this.usageService = new SoundUsageService(libraryService, assetService);
     this.styleGuideService = new SoundStyleGuideService(libraryService);
     this.checklistService = new SoundChecklistService(libraryService);
+  }
+
+  setChangeReviewService(changeReviewService: SoundChangeReviewService): void {
+    this.changeReviewService = changeReviewService;
   }
 
   async validateBoard(projectId: string): Promise<SoundBoardValidationResult> {
@@ -71,6 +77,9 @@ export class SoundBoardValidationService {
     }
     if (this.checklistService.isIncomplete(projectId)) {
       issues.push(createBoardIssue("warning", "CHECKLIST_INCOMPLETE", "Project checklist is incomplete."));
+    }
+    if (this.changeReviewService) {
+      issues.push(...(await this.changeReviewService.getValidationIssues(projectId)));
     }
     const dashboard = this.createDashboard(projectId, items, issues);
     return {

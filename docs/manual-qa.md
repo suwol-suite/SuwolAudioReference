@@ -215,6 +215,19 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 9. Apply rollback and confirm the first candidate is selected/approved again while the second candidate is no longer selected/approved.
 10. Confirm no usage rows or audio assets were created/deleted and no source audio or engine project files were modified.
 
+## H3B. Sound Change Review
+
+1. Create snapshot A from a project with at least one selected/approved candidate, freeze it, and set it as baseline.
+2. Change the board by selecting/approving a different candidate, editing rights metadata, or removing a test usage item.
+3. Create a Change Review from baseline and confirm pending items are generated from the snapshot/current diff.
+4. Approve one item, reject one item, and defer one item. Confirm the summary counts and filters update.
+5. Add a reviewer note and decision reason, switch away from the review, and confirm the values persist when reopened.
+6. Export the review report as Markdown, JSON, and CSV from Export Center.
+7. Export Sound Pack Changelog with review decisions enabled, then repeat with approved-only/exclude-rejected options.
+8. Preview Project Sound Pack and confirm latest review pending/approved/rejected counts are visible.
+9. Confirm validation warns about pending breaking changes or rejected changes still present.
+10. Confirm review approval/rejection never changes selected/approved candidate mappings by itself.
+
 ## I. Trash Safety
 
 1. Move a copy-mode asset to trash and restore it.

@@ -15,6 +15,8 @@ import { SoundBoardExportService } from "../sound-board-export-service";
 import { SoundBoardValidationService } from "../sound-board-validation-service";
 import { SoundCandidateService } from "../sound-candidate-service";
 import { SoundChecklistService } from "../sound-checklist-service";
+import { SoundChangeReviewExportService } from "../sound-change-review-export-service";
+import { SoundChangeReviewService } from "../sound-change-review-service";
 import { SoundPackChangelogService } from "../sound-pack-changelog-service";
 import { SoundPackDiffService } from "../sound-pack-diff-service";
 import { SoundPackSnapshotService } from "../sound-pack-snapshot-service";
@@ -511,6 +513,127 @@ describe("sound board services", () => {
     expect(restoredCandidates.find((candidate) => candidate.assetId === assets[1]!.id)).toMatchObject({ selected: false, approved: false });
   });
 
+  it("creates sound change reviews, records decisions, exports reports, and filters changelogs by review status", async () => {
+    const services = await createServices();
+    const assets = await importTwoAssets(services);
+    const project = services.projectService.createProject({ name: "Review Project", engineType: "unity" });
+    const click = await services.usageService.createItem({
+      projectId: project.id,
+      key: "ui.click",
+      displayName: "Click",
+      category: "ui",
+      required: true,
+    });
+    const removed = await services.usageService.createItem({
+      projectId: project.id,
+      key: "sfx.old",
+      displayName: "Old SFX",
+      category: "sfx",
+      required: true,
+    });
+    const first = await services.candidateService.addCandidate({ usageItemId: click.id, assetId: assets[0]!.id, selected: true });
+    await services.candidateService.updateCandidate(first.id, { approved: true });
+    await saveRights(services, assets[0]!.id, { licenseName: "CC0", commercialUseStatus: "allowed", creditRequired: "no" });
+
+    const snapshot = await services.snapshotService.create({ projectId: project.id, name: "Review Baseline", freeze: true });
+    await services.snapshotService.setBaseline(snapshot.id);
+    const second = await services.candidateService.addCandidate({ usageItemId: click.id, assetId: assets[1]!.id, selected: true });
+    await services.candidateService.updateCandidate(second.id, { approved: true });
+    await services.usageService.deleteItem(removed.id);
+
+    const review = await services.changeReviewService.createFromBaseline({ projectId: project.id });
+    const initialValidation = await services.validationService.validateBoard(project.id);
+    const selectionItem = review.items.find((item) => item.changeType === "selection_changed");
+    const removedItem = review.items.find((item) => item.changeType === "usage_removed");
+    const otherPending = review.items.find((item) => item.id !== selectionItem?.id && item.id !== removedItem?.id);
+
+    expect(review.summary.totalChanges).toBeGreaterThan(0);
+    expect(review.summary.pending).toBe(review.items.length);
+    expect(JSON.stringify(selectionItem?.before)).toContain(assets[0]!.id);
+    expect(initialValidation.issues.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining(["PENDING_BREAKING_CHANGES", "PENDING_SELECTED_ASSET_CHANGES"]),
+    );
+
+    if (!selectionItem || !removedItem) {
+      throw new Error("Expected selection and removal review items.");
+    }
+    const approved = services.changeReviewService.updateItemStatus(selectionItem.id, {
+      status: "approved",
+      decisionReason: "Clearer click sound for mobile UI",
+    });
+    const rejected = services.changeReviewService.updateItemStatus(removedItem.id, { status: "rejected" });
+    const noted = services.changeReviewService.updateItemNote(approved.id, { reviewerNote: "Lead approved." });
+    if (otherPending) {
+      services.changeReviewService.bulkUpdateItems({ reviewId: review.id, itemIds: [otherPending.id], status: "deferred" });
+    }
+    const decided = services.changeReviewService.get(review.id)!;
+    const rejectedValidation = await services.validationService.validateBoard(project.id);
+    const markdown = services.changeReviewExportService.preview({
+      reviewId: review.id,
+      format: "markdown",
+      includeBeforeAfterDetails: true,
+    });
+    const json = services.changeReviewExportService.preview({ reviewId: review.id, format: "json" });
+    const csv = services.changeReviewExportService.preview({ reviewId: review.id, format: "csv" });
+    const outputRoot = join(services.rootPath, "review-export");
+    const exported = await services.changeReviewExportService.export({ reviewId: review.id, format: "markdown" }, outputRoot);
+    const centerPreview = await services.exportCenterService.preview({
+      target: "sound_change_review_markdown",
+      source: { type: "gameProject", projectId: project.id, name: project.name },
+      reviewId: review.id,
+    });
+    const centerExport = await services.exportCenterService.run({
+      target: "sound_change_review_csv",
+      source: { type: "gameProject", projectId: project.id, name: project.name },
+      reviewId: review.id,
+    }, outputRoot);
+    const decisionChangelog = await services.changelogService.preview({
+      projectId: project.id,
+      fromSnapshotId: snapshot.id,
+      compareToCurrent: true,
+      reviewId: review.id,
+      includeReviewDecisions: true,
+      excludeRejectedChanges: true,
+    });
+    const approvedOnlyChangelog = await services.changelogService.preview({
+      projectId: project.id,
+      fromSnapshotId: snapshot.id,
+      compareToCurrent: true,
+      reviewId: review.id,
+      approvedChangesOnly: true,
+      includeReviewDecisions: true,
+    });
+    const packPreview = await services.projectSoundPackService.preview({
+      projectId: project.id,
+      soundPackName: "review-pack",
+      includeReviewReport: true,
+      copyAudioFiles: false,
+      blockIfSelectedFileMissing: false,
+    }, outputRoot);
+    const archived = services.changeReviewService.archive(review.id);
+
+    expect(approved.status).toBe("approved");
+    expect(rejected.status).toBe("rejected");
+    expect(noted.reviewerNote).toBe("Lead approved.");
+    expect(decided.summary.approved).toBeGreaterThan(0);
+    expect(decided.summary.rejected).toBeGreaterThan(0);
+    expect(rejectedValidation.issues.map((issue) => issue.code)).toContain("REJECTED_CHANGE_STILL_PRESENT");
+    expect(markdown.previewText).toContain("Sound Change Review Report");
+    expect(markdown.previewText).toContain("Review approval does not modify audio mappings.");
+    expect(json.previewText).toContain("\"review\"");
+    expect(csv.previewText).toContain("usageKey");
+    expect(exported.files[0]).toContain("sound-change-review.md");
+    expect(centerPreview.plannedFiles[0]?.path).toContain("sound-change-review.md");
+    expect(centerExport.ok).toBe(true);
+    expect(decisionChangelog.previewText).toContain("Review: approved");
+    expect(decisionChangelog.previewText).not.toContain("Usage item was removed.");
+    expect(approvedOnlyChangelog.diff.changes.every((change) => change.type !== "usage_removed")).toBe(true);
+    expect(packPreview.latestReview?.rejectedChangesStillPresent).toBeGreaterThan(0);
+    expect(packPreview.plannedFiles.some((file) => file.relativePath === "change-review-report.md")).toBe(true);
+    expect(archived.status).toBe("archived");
+    expect(services.changeReviewService.list({ projectId: project.id })).toHaveLength(0);
+  });
+
   it("manages workflow notes, candidate reviews, style guides, checklists, and sound request exports", async () => {
     const services = await createServices();
     const assets = await importTwoAssets(services);
@@ -742,7 +865,6 @@ async function createServices() {
   const bulkImportService = new SoundUsageBulkImportService(libraryService, assetService);
   const templateService = new SoundUsageTemplateService(libraryService, assetService);
   const validationService = new SoundBoardValidationService(libraryService, assetService, candidateService);
-  const projectSoundPackService = new ProjectSoundPackService(libraryService, assetService, candidateService);
   const workflowService = new SoundWorkflowService(libraryService, assetService, candidateService);
   const styleGuideService = new SoundStyleGuideService(libraryService);
   const checklistService = new SoundChecklistService(libraryService);
@@ -755,7 +877,11 @@ async function createServices() {
     projectService,
   );
   const diffService = new SoundPackDiffService(snapshotService);
-  const changelogService = new SoundPackChangelogService(diffService);
+  const changeReviewService = new SoundChangeReviewService(libraryService, diffService, projectService);
+  const changeReviewExportService = new SoundChangeReviewExportService(changeReviewService);
+  validationService.setChangeReviewService(changeReviewService);
+  const projectSoundPackService = new ProjectSoundPackService(libraryService, assetService, candidateService, changeReviewService);
+  const changelogService = new SoundPackChangelogService(diffService, changeReviewService);
   const exportCenterService = new ExportCenterService(
     libraryService,
     assetService,
@@ -766,6 +892,7 @@ async function createServices() {
     soundRequestExportService,
     snapshotService,
     changelogService,
+    changeReviewExportService,
   );
   return {
     rootPath,
@@ -785,6 +912,8 @@ async function createServices() {
     styleGuideService,
     checklistService,
     soundRequestExportService,
+    changeReviewService,
+    changeReviewExportService,
     snapshotService,
     diffService,
     changelogService,
