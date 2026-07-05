@@ -51,9 +51,18 @@ describe("release readiness docs and checks", () => {
     const packageJson = {
       version: APP_VERSION,
       license: "Apache-2.0",
+      engines: {
+        node: ">=24.0.0",
+      },
       build: {
         appId: "work.suwol.audio-reference",
         productName,
+        win: {
+          target: ["dir"],
+        },
+        linux: {
+          target: ["dir"],
+        },
       },
     };
 
@@ -109,5 +118,19 @@ describe("release readiness docs and checks", () => {
     );
 
     expect(output).toContain(`release tag check ok: v${APP_VERSION}`);
+  });
+
+  it("documents the 0.1.1 project export release scope", () => {
+    const notes = readFileSync(join(process.cwd(), APP_RELEASE_NOTES_DOC), "utf8");
+
+    expect(notes).toContain("Game Project");
+    expect(notes).toContain("Sound Usage Board");
+    expect(notes).toContain("Project Sound Pack");
+    expect(notes).toContain("Project Manifest");
+    expect(notes).toContain("Project Missing Report");
+    expect(notes).toContain("Project Codex Instruction");
+    expect(notes).toContain("Export Center game-project source");
+    expect(notes).toContain("Local export history");
+    expect(notes).toContain("97 tests passed");
   });
 });

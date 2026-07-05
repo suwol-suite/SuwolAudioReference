@@ -30,6 +30,20 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Temporary handling: Use diagnostics and the Unplayable smart folder to find these files.
 - Future plan: Consider clearer codec reporting without adding conversion or ffmpeg features.
 
+## Zip-First Distribution Only
+
+- Symptom: 0.1.1 publishes Windows and Linux zip files instead of installers or native Linux packages.
+- Impact: Users must extract the zip and run the executable from the extracted folder. Windows users may see unsigned-app warnings.
+- Temporary handling: Publish release notes, hashes, source information, and distribution guides next to the zip artifacts.
+- Future plan: Evaluate installers or signed distribution only after the MVP zip workflow is stable.
+
+## Engine Project Files Are Not Modified
+
+- Symptom: Project Manifest, Project Sound Pack, Unity, Unreal, and MonoGame exports create local handoff files but do not patch game projects directly.
+- Impact: Users must manually import or copy generated manifests/lists/audio into their engine project if desired.
+- Temporary handling: Review generated `README.md`, manifests, and content lists inside the export folder.
+- Future plan: Keep direct engine project mutation out of 0.1.1 unless a later phase explicitly scopes an integration.
+
 ## Large Library Performance Expectations
 
 - Symptom: Very large libraries can take longer to import, analyze, search, or export.
@@ -64,6 +78,13 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Impact: Exported sound packs copy original audio files as-is.
 - Temporary handling: Use separate audio tools for editing or conversion before importing or after export.
 - Future plan: Keep editing/conversion out of this MVP to avoid changing source files or adding ffmpeg/GPL dependencies.
+
+## Project Sound Pack Is Copy-Only
+
+- Symptom: Project Sound Pack export copies selected files into an export folder and writes manifests, reports, and metadata.
+- Impact: The export does not rename, move, edit, normalize, or transcode original source files. Missing selected source files block export.
+- Temporary handling: Use the preview, warning acknowledgement, missing report, validation report, and output tree before exporting.
+- Future plan: Preserve non-destructive export behavior as the default safety boundary.
 
 ## No Automatic Duplicate Deletion
 

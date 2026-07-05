@@ -20,15 +20,16 @@ Local Windows development should not try to force a Linux build. Let the GitHub 
 ## Running The Zip Build
 
 1. Download the Linux zip from the official GitHub Release.
-2. Extract it to a writable folder.
-3. Open a terminal in the extracted folder.
-4. If the executable bit is missing, run:
+2. If a checksum file is published, compare the zip SHA-256 hash before running.
+3. Extract it to a writable folder.
+4. Open a terminal in the extracted folder.
+5. If the executable bit is missing, run:
 
 ```bash
 chmod +x "suwol-audio-reference"
 ```
 
-5. Start the app:
+6. Start the app:
 
 ```bash
 ./suwol-audio-reference
@@ -40,6 +41,7 @@ The exact executable name is checked by `scripts/check-release-artifacts.mjs`; i
 
 - AppImage, deb, rpm, Snap, and Flatpak packages are not part of the 0.1.1 distribution.
 - Playback support can vary by Linux distribution, Chromium codec support, and installed system libraries.
+- Linux manual smoke should confirm launch, library open/create, one import, one playback attempt, Export Center preview, and app close.
 - The app does not bundle an app-managed ffmpeg executable.
 - The app does not provide audio editing, conversion, or transcoding.
 - The app does not call AI, OpenAI, Codex, Whisper, LLM, cloud analysis, or cloud backup services.

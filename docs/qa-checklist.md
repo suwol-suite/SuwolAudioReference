@@ -8,6 +8,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd test` passes.
 - `npm.cmd audit` passes or every finding has a documented release decision.
 - `npm.cmd run check:i18n` passes.
+- `npm.cmd run check:release-tag -- --tag=v0.1.1` passes before any tag is created.
 - `npm.cmd run build` passes.
 - `npm.cmd run smoke:production-entry` passes after build.
 - `npm.cmd run pack` passes.
@@ -16,6 +17,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd run zip:win` passes after the Windows unpacked build is created.
 - `npm.cmd run check:release -- --platform win` passes after the Windows zip is created.
 - The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, and `npm run check:release -- --platform linux`.
+- `package.json` version is `0.1.1`, `engines.node` is Node 24+, license is `Apache-2.0`, and packaging remains zip-first.
 
 ## Fixture Set
 
@@ -183,10 +185,97 @@ Do not commit generated fixture audio.
 - Enter source/license/credit metadata in the inspector, save it, change selection, and confirm it reloads.
 - Save an export preset, apply it, then delete it.
 - Confirm built-in export presets appear and cannot be deleted.
+- Select a game project as the Export Center source.
+- Preview and export Project Sound Pack from Export Center.
+- Preview and export Project Manifest from Export Center for Generic, Unity, Unreal, and MonoGame profiles.
+- Preview and export Project Missing Report and Project Codex Instruction from Export Center.
+- Confirm project export presets can be saved, applied, and deleted while built-in project presets are not written to the preset table.
+- Confirm successful and failed Export Center runs appear in export history and can be deleted without deleting output files.
 - Export files with Korean filenames.
 - Export files with spaces and special characters in filenames.
 - Confirm original source audio files are not renamed, moved, edited, transcoded, or deleted.
 - Confirm Unity/Unreal/MonoGame exports do not modify engine project folders directly.
+
+## Sound Usage Board
+
+- Open Sound Usage Board from the main toolbar.
+- Create a game project and confirm it is scoped to the active library.
+- Update engine type, namespace, and default project export format.
+- Confirm the dashboard counts total, missing, review, selected, approved, and risk states.
+- Click dashboard and risk-strip filters, including required, no-candidate, selected, approved, and risk cards, and confirm the usage list updates without changing data.
+- Confirm the active filter label and clear-filter action reflect the current dashboard or risk selection.
+- Confirm templates are not applied automatically to a new project.
+- Apply Basic Mobile Game UI, Basic RPG, Basic Action Game, or Basic Casual Game only by explicit user action.
+- Confirm template apply preview shows create/update/skip counts before rows are written.
+- Save the current project as a custom template, apply it to another project, rename it, and delete it.
+- Paste several usage rows into Bulk Add and confirm preview counts for valid, create, update, skip, duplicate, existing, invalid, unknown category, unknown priority, loop-detected, comment, and blank rows before creating.
+- Confirm duplicate usage keys are skipped or rejected without corrupting existing rows.
+- Add a manual usage key and edit display name, category, status, priority, required, loop required, variants allowed, target duration, and notes.
+- Edit target loudness note and description, then confirm unsaved-change state appears before saving.
+- Use quick review actions to mark usage items reviewing, approved, deferred, and rejected.
+- Add selected browser assets as candidates for a usage item.
+- From the Asset Inspector, confirm linked usage items appear for assets already used as candidates or selected assets.
+- From the Asset Inspector, use Open Board and confirm it returns to the board workflow.
+- From the Asset Inspector, add the current asset to a usage item and confirm it appears in the board candidate list.
+- Search assets inside the board and add a candidate manually.
+- Mark a candidate selected and confirm the board status updates.
+- Approve a selected candidate and confirm an unselected candidate cannot be approved as final.
+- With variants disabled, confirm selecting a second candidate clears the first selection.
+- With variants enabled, confirm multiple selected candidates are allowed.
+- Reject a candidate and confirm it is not selected. Confirm the rejected candidate must be restored before it can be selected again.
+- Confirm candidate rows show rank, fit score/reasons, duration, classification, rating/favorite, loop score, RMS/peak, rights risk, selected, approved, and rejected states.
+- Confirm candidate play, A/B compare, and Set Selected controls are disabled for missing or unplayable files.
+- Confirm searching or suggesting an asset that is already linked shows an already-candidate state instead of creating a duplicate link.
+- Use board validation and confirm missing required sounds, selected missing files, unsupported playback, unknown license, loop mismatch, credit warnings, and engine key warnings are shown when applicable.
+- Apply or copy a suggested engine/usage key only by clicking the explicit action.
+- Filter and sort usage rows by missing, risk, review state, candidate count, key, status, category, and priority.
+- Filter by required, critical, loop required, recently updated, and priority. Sort by required-first and confirm required rows stay above optional rows.
+- Run candidate suggestions and confirm they do not auto-select, tag, rate, copy, or mutate assets.
+- Run candidate suggestions from an existing candidate and confirm the seed changes suggestions without mutating the board.
+- Send two candidates to A/B compare and confirm the existing compare panel receives both assets.
+- Generate a missing sound report and confirm required missing items, candidate gaps, loop warnings, and unknown selected licenses are represented.
+- Use the Sound Board project export shortcuts and confirm they open Export Center prefilled instead of writing files directly.
+- Use the current-filter shortcut and confirm only the filtered usage items are exported.
+- Preview and export generic, Unity, Unreal CSV, MonoGame, Codex instruction, sound pack plan, and missing report outputs through Export Center.
+- Confirm export preview includes board summary, validation summary, missing/risk counts, item count, selected asset count, candidate count, copy estimate, skip estimate, planned files, and the non-destructive safety note before export.
+- Confirm export execution is blocked while validation errors remain.
+- Confirm `usageKey` appears in project manifests and Unreal CSV.
+- Confirm MonoGame export includes usage-key comments.
+- Confirm Codex instruction export includes the sound usage board.
+- Confirm Sound Work TODO queues show Missing, Need Candidates, Reviewing, Selected, Approved, Deferred, and Risk counts.
+- Filter the TODO queue by assignee and due label, then confirm selecting a task opens the matching usage item.
+- Change usage status and priority from a TODO card and confirm the board summary and validation refresh.
+- Edit workflow assignee, due label, work note, review note, and decision note, then confirm they persist after closing and reopening the board.
+- Add candidate pros, cons, review note, decision reason, usage fit rating, loudness fit, loop fit, and mood fit, then confirm they persist without auto-selecting or auto-approving the candidate.
+- Save a Project Sound Style Guide and confirm user-entered text is not translated when switching locales.
+- Confirm a new project starts with no checklist rows, then explicitly add built-in checklist items.
+- Check and uncheck checklist items, edit notes, add a custom checklist item, and delete a checklist item.
+- Confirm validation warns for approved items without decision notes, selected items without review notes, open TODO work notes, empty style guide, incomplete checklist, and selected candidates without review/rating.
+- Preview Sound Request Markdown, CSV, and JSON from Export Center and confirm absolute paths are excluded by default.
+- Export Project Style Guide Markdown and Project Checklist Markdown from Export Center.
+- Confirm Project Sound Pack and Project Codex Instruction include style/checklist/work/review/decision notes only when the related include options are enabled.
+- Confirm project exports do not modify Unity, Unreal, MonoGame, or other game project files.
+- Create or import hundreds of usage rows and confirm search, filters, sort changes, item selection, detail editing, and candidate list rendering remain responsive.
+
+## Project Sound Pack Export Center Flow
+
+- From Sound Usage Board, open Project Sound Pack in Export Center and preview before export.
+- Confirm the default export includes approved selected assets only.
+- Confirm selected but not approved assets appear as warnings and are skipped by default.
+- Confirm the warning acknowledgement is required before exporting with warnings.
+- Confirm a missing selected source file blocks export.
+- Confirm unknown license metadata appears as a review warning.
+- Confirm credit-required assets without attribution appear in the credits/validation reports.
+- Confirm usage-key filename policy creates names such as `ui_button_click.wav`.
+- Confirm variants use numbered suffixes such as `combat_hit_light_01.wav`.
+- Confirm original filename policy keeps original names and resolves collisions with suffixes.
+- Confirm Generic profile writes `audio/<category>/...` and `manifest.json`.
+- Confirm Unity profile writes `Assets/Audio/...` and `UnityAudioManifest.json` inside the export folder only.
+- Confirm Unreal profile writes `ContentImport/Audio/...`, `UnrealAudioManifest.json`, and `UnrealAudioManifest.csv`.
+- Confirm MonoGame profile writes `Content/Audio/...`, `MonoGameAudioManifest.json`, and `MonoGameContentList.txt`.
+- Confirm `README.md`, `credits.md`, `missing-sounds.md`, `validation-report.md`, and metadata CSV files are created.
+- Confirm output folder open action opens the generated sound pack folder.
+- Confirm original source audio files are unchanged after export.
 
 ## Phase 5A UI Polish
 
@@ -242,6 +331,7 @@ Do not commit generated fixture audio.
 - Play one imported audio file.
 - Switch ko/en and restart to confirm locale persistence.
 - Confirm waveform, analysis, feature vector, similar sounds, quick preview, and A/B compare work in the packaged build.
+- Create a Sound Usage Board project, add candidates, preview missing report, and export one project manifest.
 - Run Export Center for Codex instruction, generic manifest, and sound pack metadata/folder outputs.
 - Run backup and diagnostics.
 - Open settings and run diagnostics.

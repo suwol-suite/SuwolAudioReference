@@ -43,9 +43,12 @@ This repository is preparing a Windows MVP release. The current build includes:
 - Sound pack metadata and folder export with copy-only audio handling.
 - User-entered source, license, credit, and rights metadata on each asset.
 - Export presets, preview validation, warning acknowledgement, and export summaries.
+- Export Center project sources, project sound pack/manifest/missing-report/Codex targets, and local export history.
 - Polished main workflow with paged asset loading, clearer selection/playback states, toast feedback, modal confirms, progress overlays, and shortcut help.
 - Collapsible inspector sections for file info, memo/rating, audio details, tags/collections, analysis, rights, and export shortcuts.
 - Similar Sounds panel in the inspector with local DSP candidate scores, reason chips, duplicate markers, play, and A/B compare actions.
+- Game project sound usage board for required sound keys, candidates, selected assets, missing reports, and project-specific manifests.
+- Sound usage dashboard, bulk paste import, custom board templates, validation panel, status review actions, asset-to-usage links, and export readiness preview.
 - WAV PCM analysis uses a local parser for supported PCM/float WAV files; unsupported codecs keep the existing metadata-only fallback.
 - Settings tabs for general, playback, library management, shortcuts, and about.
 - Windows packaging metadata and generated application icons.
@@ -57,6 +60,21 @@ This repository is preparing a Windows MVP release. The current build includes:
 - Secondary CI package target: Linux x64 zip.
 - Development target: Node.js 24+ and npm 10+ on Windows PowerShell.
 - macOS builds are not release targets for this MVP.
+
+## 0.1.1 Release Focus
+
+Version 0.1.1 is the Game Project and Sound Usage Board release candidate. The main release path is:
+
+- Create a local game project.
+- Build a Sound Usage Board with required usage keys, categories, priorities, loop needs, variants, notes, and candidates.
+- Use bulk import and templates to create board rows without auto-seeding project data.
+- Review selected, approved, rejected, missing, and risk states.
+- Open Export Center from Sound Board shortcuts with the active game project prefilled.
+- Export Project Sound Pack, Project Manifest, Project Missing Report, and Project Codex Instruction outputs.
+- Review project export presets and local export history.
+- Distribute Windows and Linux zip artifacts only.
+
+The release stays local-first: no AI/cloud calls, no Codex/OpenAI API calls, no bundled ffmpeg, no GPL runtime dependency added by the app, no audio editing/conversion, and no direct mutation of Unity, Unreal, MonoGame, or other engine project files.
 
 ## Supported Audio Inputs
 
@@ -232,6 +250,68 @@ GitHub release workflow notes:
 - `v*` tag pushes create a GitHub Release and upload the Windows/Linux zip artifacts.
 - The automated release workflow uploads zip files only. It does not publish installers, AppImage, deb, rpm, or signed packages.
 - No GitHub secrets, OpenAI/Codex/API keys, code-signing certificates, or cloud service credentials are required.
+
+Phase 8 sound usage board notes:
+
+- Open the Sound Usage Board from the main browser toolbar.
+- A game project stores sound usage keys, categories, status, priority, loop requirements, variants, notes, and candidate assets.
+- Built-in usage templates are applied only when the user explicitly clicks a template. No template rows are seeded automatically.
+- Candidate suggestions use local library metadata, analysis, tags, ratings, favorites, and local similarity results. Suggestions never auto-select or modify assets.
+- A selected candidate can be sent to the existing A/B compare flow with another candidate.
+- Project exports write local manifest/report files for generic, Unity, Unreal CSV, MonoGame content, Codex instruction, sound pack plan, and missing report workflows.
+- Project exports include `usageKey` mappings and do not modify Unity, Unreal, MonoGame, or other engine project folders.
+
+Phase 9 sound usage board notes:
+
+- The board dashboard summarizes total, missing, review, selected, approved, and risk counts, and the risk strip filters the usage list.
+- Bulk Add accepts pasted usage rows, shows a create/update/skip preview, and applies rows only after the user confirms.
+- Custom templates can be saved from a project, applied to another project, renamed, and deleted. Built-in templates remain read-only.
+- Candidate rows expose rank, fit score, duration, classification, rating/favorite, loop score, RMS/peak, rights risk, selected, approved, and rejected state.
+- Review status actions are explicit. The app does not auto-approve or auto-select candidates.
+- The validation panel reports missing required sounds, selected file risks, unknown license metadata, loop mismatch, playback support, and engine-key readiness.
+- The Asset Inspector shows linked usage items and can add the current asset to a usage item without moving or editing source audio.
+- Export previews include board summary, validation issues, missing/risk counts, and planned files before writing local output.
+
+Phase 10A sound usage board QA polish notes:
+
+- Dashboard cards now behave as active filters, including required, no-candidate, selected, approved, and risk states, with a visible clear-filter action.
+- Usage search is debounced, and priority, risk, and sort controls refresh the board list together. `Required first` keeps required sounds ahead of optional rows even when optional rows have high priority.
+- Bulk Add preview separates valid, duplicate, already-existing, invalid, unknown-category, unknown-priority, loop-detected, comment, and blank-line counts before any rows are written.
+- Template application previews create/update/skip counts before applying rows, and custom templates can be renamed or deleted while built-in templates remain read-only.
+- Candidate rows make selected, approved, rejected, missing-file, and playback-support states explicit. A rejected candidate must be restored before it can be selected again.
+- Similar candidate search can be seeded from an existing candidate, but suggestions still never auto-select, approve, tag, rate, copy, or mutate assets.
+- Validation issue labels are localized, suggested safe keys can be copied, and export preview blocks execution when validation errors remain.
+- Project export preview shows item, selected asset, candidate, required-missing, error, warning, copy-estimate, skip-estimate, planned-file, and non-destructive safety information before writing output.
+
+Phase 10B project sound pack notes:
+
+- Project Sound Pack export packages approved selected assets from a game project and is launched through Export Center or Sound Board shortcuts.
+- The default policy is approved selected assets only. Selected but unapproved candidates are reported as warnings and are not exported unless explicitly included.
+- Engine profiles create export-folder-only layouts for Generic, Unity, Unreal, and MonoGame. The app does not modify Unity, Unreal, MonoGame, or other game project files.
+- Audio files are copied as-is into the new sound pack folder. Original audio files are never renamed, moved, edited, transcoded, or deleted.
+- Filename policy can keep original names, use usage-key safe names, or use category + usage-key names. Collisions are resolved with suffixes and recorded in the rename plan.
+- Project sound packs write `manifest.json`, engine-specific manifests/lists, `README.md`, `credits.md`, `missing-sounds.md`, `validation-report.md`, and metadata CSV files.
+- Validation blocks missing selected files, output-folder collisions, and no approved selected assets. Required missing sounds, unknown license metadata, credit gaps, loop mismatch, playback support, and selected-not-approved states are reported before export.
+
+Phase 11B Export Center integration notes:
+
+- Export Center now accepts game projects as a source in addition to asset selections, filters, collections, tags, smart folders, and the whole library.
+- Project export targets include Project Sound Pack, Project Manifest, Project Missing Report, and Project Codex Instruction.
+- Sound Board export shortcuts open Export Center prefilled with the active project, selected project export type, engine profile, and optional current board filter instead of writing files directly.
+- Project Sound Pack preview reuses the sound pack dry-run summary, output tree, rename plan, and validation issues inside the Export Center flow.
+- Project export presets are available as built-in presets without being inserted into the local preset table. User-saved project presets are stored per library.
+- Export history records success and failure results locally, including target, source label, output path, summary, options snapshot, and errors. History write failures are downgraded to export warnings.
+
+Phase 12 sound workflow productivity notes:
+
+- Sound Work TODO groups usage items into Missing, Need Candidates, Reviewing, Selected, Approved, Deferred, and Risk queues without drag/drop dependencies.
+- Usage items now store workflow metadata separately from sound notes: assignee, due label, work note, review note, decision note, and workflow-updated time.
+- Candidate review fields store user-written pros, cons, review note, decision reason, usage fit rating, loudness fit, loop fit, and mood fit. Similarity scores remain separate and never auto-approve candidates.
+- Project Sound Style Guide and Project Checklist sections are project-scoped, user-authored data. Built-in checklist rows are inserted only when the user explicitly adds them.
+- Sound Request exports create Markdown, CSV, or JSON request documents for missing/review/risk work. Absolute paths are excluded by default.
+- Export Center project targets now include Sound Request Markdown/CSV/JSON, Project Style Guide Markdown, and Project Checklist Markdown.
+- Project Sound Pack and Project Codex Instruction options can include style guide, checklist, work notes, candidate review notes, and decision notes without changing original audio or game project files.
+- Workflow validation adds warnings for approved items without decision notes, selected items without review notes, open TODO work notes, empty style guide, incomplete checklist, and selected candidates without review/rating data.
 
 ## Logs And Troubleshooting
 

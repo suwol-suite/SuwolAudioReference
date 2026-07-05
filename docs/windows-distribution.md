@@ -31,6 +31,14 @@ Users download the Windows zip from GitHub Releases, extract it to a writable fo
 
 An installer is not the primary 0.1.1 release artifact. The GitHub Actions release workflow uploads zip files only.
 
+Recommended user-facing steps:
+
+1. Download `Suwol Audio Reference 0.1.1 Windows x64.zip` from the official GitHub Release.
+2. If a checksum file is published, compare the zip SHA-256 hash before running.
+3. Extract the zip to a writable folder, for example under the user's Downloads or Tools folder.
+4. Run `win-unpacked\Suwol Audio Reference.exe`.
+5. Keep the extracted folder together; do not run the executable directly from inside the compressed zip viewer.
+
 ## Unsigned Build Notice
 
 The current 0.1.1 build is not code signed. Windows SmartScreen, Microsoft Defender, or browser download checks may warn that the publisher is unknown.
@@ -42,6 +50,7 @@ Do not tell users to ignore security warnings blindly. Instead:
 - Publish release notes and known issues next to the artifacts.
 - Keep source, license, and third-party notices available for review.
 - Ask testers to confirm the file name, source, and hash before running the app.
+- Ask testers to report the exact warning text if SmartScreen or a browser blocks execution.
 
 Code signing with an OV or EV certificate is a future distribution phase. This Phase 7 work does not implement signing or attempt to bypass SmartScreen reputation checks.
 

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 const EXPECTED_APP_ID = "work.suwol.audio-reference";
 const EXPECTED_PRODUCT_NAME = "Suwol Audio Reference";
 const VALID_PLATFORMS = new Set(["win", "linux", "all"]);
+const MIN_NODE_MAJOR = 24;
 
 function parsePlatform(argv) {
   const explicit = argv.find((arg) => arg.startsWith("--platform="));
@@ -55,6 +56,38 @@ async function assertPackagedResources(unpackedPath, label) {
   }
 }
 
+function assertNodeEngine(packageJson) {
+  const nodeEngine = packageJson.engines?.node;
+  if (typeof nodeEngine !== "string" || !nodeEngine.trim()) {
+    throw new Error("package.json engines.node is missing");
+  }
+  const match = nodeEngine.match(/(?:>=|=|~|\^)?\s*(\d+)/);
+  const major = match ? Number(match[1]) : NaN;
+  if (!Number.isFinite(major) || major < MIN_NODE_MAJOR) {
+    throw new Error(`package.json engines.node must require Node ${MIN_NODE_MAJOR}+; found "${nodeEngine}"`);
+  }
+}
+
+function assertZipFirstBuildMetadata(packageJson) {
+  const winTargets = Array.isArray(packageJson.build?.win?.target)
+    ? packageJson.build.win.target
+    : [packageJson.build?.win?.target].filter(Boolean);
+  const linuxTargets = Array.isArray(packageJson.build?.linux?.target)
+    ? packageJson.build.linux.target
+    : [packageJson.build?.linux?.target].filter(Boolean);
+  if (!winTargets.includes("dir")) {
+    throw new Error("package.json build.win.target must include dir for zip-first Windows packaging");
+  }
+  if (!linuxTargets.includes("dir")) {
+    throw new Error("package.json build.linux.target must include dir for zip-first Linux packaging");
+  }
+  for (const target of [...winTargets, ...linuxTargets]) {
+    if (["nsis", "msi", "appx", "appimage", "deb", "rpm", "snap", "flatpak"].includes(String(target).toLowerCase())) {
+      throw new Error(`Installer/package target is outside 0.1.1 zip-first scope: ${target}`);
+    }
+  }
+}
+
 async function assertLinuxExecutable(root, productName, packageName) {
   const linuxUnpacked = join(root, "release", "linux-unpacked");
   const candidates = [
@@ -95,6 +128,8 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
   if (packageJson.license !== "Apache-2.0") {
     throw new Error(`Unexpected license: ${packageJson.license}`);
   }
+  assertNodeEngine(packageJson);
+  assertZipFirstBuildMetadata(packageJson);
 
   const requiredFiles = [
     ["README.md", "README"],
