@@ -23,10 +23,12 @@ async function main() {
   }
   const appImage = single(files, (file) => file.endsWith(".AppImage"), "Linux AppImage");
   const tarball = single(files, (file) => file.endsWith(".tar.gz"), "Linux tar.gz");
+  const appImageBlockmap = `${appImage}.blockmap`;
   const latestLinux = "latest-linux.yml";
   const checksums = "checksums.txt";
 
   await assertFile(appImage, "Linux AppImage");
+  await assertFile(appImageBlockmap, "Linux AppImage blockmap");
   await assertFile(tarball, "Linux tar.gz");
   await assertFile(latestLinux, "latest-linux.yml");
   await assertFile(checksums, "checksums.txt");
@@ -35,14 +37,19 @@ async function main() {
   }
 
   const latestLinuxContent = await readFile(join(targetDirectory, latestLinux), "utf8");
-  if (!latestLinuxContent.includes(appImage)) {
+  if (!latestLinuxReferences(latestLinuxContent).includes(appImage)) {
     throw new Error(`latest-linux.yml does not reference ${appImage}`);
   }
   if (!/sha512:\s*\S+/m.test(latestLinuxContent)) {
     throw new Error("latest-linux.yml does not contain a sha512 entry");
   }
-  if (!/version:\s*\S+/m.test(latestLinuxContent)) {
+  const latestVersion = latestLinuxContent.match(/^version:\s*["']?([^"'\s]+)["']?/m)?.[1];
+  if (!latestVersion) {
     throw new Error("latest-linux.yml does not contain a version entry");
+  }
+  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  if (latestVersion !== packageJson.version) {
+    throw new Error(`latest-linux.yml version ${latestVersion} does not match package.json ${packageJson.version}`);
   }
 
   const checksumContent = await readFile(join(targetDirectory, checksums), "utf8");
@@ -52,14 +59,52 @@ async function main() {
     }
   }
 
-  for (const blockmap of files.filter((file) => file.endsWith(".blockmap"))) {
-    await assertFile(blockmap, `${blockmap} blockmap`);
-  }
-
   console.log(`linux updater artifacts ok: ${basename(targetDirectory)}`);
   console.log(`appimage: ${appImage}`);
   console.log(`tarball: ${tarball}`);
   console.log(`metadata: ${latestLinux}`);
+}
+
+function latestLinuxReferences(content) {
+  const references = new Set();
+  const decodedContent = safeDecode(content.replace(/\\/g, "/"));
+  const rawKeys = [...content.matchAll(/^\s*(?:-\s*)?(?:url|path):\s*(.+?)\s*$/gm)].map((match) => match[1]);
+
+  for (const rawReference of rawKeys) {
+    const normalized = normalizeArtifactReference(rawReference);
+    if (normalized) {
+      references.add(normalized);
+    }
+  }
+
+  for (const match of decodedContent.matchAll(/[^\s"'()]+\.AppImage/g)) {
+    const normalized = normalizeArtifactReference(match[0]);
+    if (normalized) {
+      references.add(normalized);
+    }
+  }
+
+  return [...references];
+}
+
+function normalizeArtifactReference(value) {
+  let reference = String(value).trim().replace(/^["']|["']$/g, "");
+  reference = reference.replace(/\\/g, "/").replace(/^\.\//, "");
+  try {
+    reference = new URL(reference).pathname;
+  } catch {
+    // Plain relative filenames are expected in electron-builder metadata.
+  }
+  reference = safeDecode(reference).replace(/\\/g, "/").replace(/^\.\//, "");
+  return basename(reference);
+}
+
+function safeDecode(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function single(files, predicate, label) {

@@ -11,16 +11,16 @@ This checklist is for preparing an MVP Windows release candidate. The MVP should
 ## Version And Metadata
 
 - `package.json` version is correct.
-- `package.json` version is `0.1.2` for this release candidate.
+- `package.json` version is `0.1.3` for this release candidate.
 - `package.json` `productName`, `appId`, `description`, and `license` are correct.
 - `package.json` `engines.node` requires Node 24 or newer.
 - Windows build metadata remains zip-first via unpacked `dir` outputs plus the repo zip script.
 - Linux build metadata includes `dir`, `AppImage`, and `tar.gz` targets; deb/rpm are included only if explicitly configured later.
 - GitHub publish metadata points at `suwol-suite/SuwolAudioReference` for Linux AppImage update checks.
-- Windows installers, Snap, Flatpak, code-signed app binaries, and auto-update targets are not introduced in 0.1.2.
+- Windows installers, Snap, Flatpak, code-signed app binaries, and Windows/tar.gz auto-update targets are not introduced in 0.1.3.
 - Windows auto-update remains disabled. Linux tar.gz and zip artifacts remain manual-download builds.
 - `README.md` reflects the supported platform, formats, library layout, and backup method.
-- `docs/manual-qa.md`, `docs/release-notes-0.1.2.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
+- `docs/manual-qa.md`, `docs/release-notes-0.1.3.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
 - Generated icons exist under `assets/brand/` and `build/`.
@@ -117,7 +117,7 @@ Include:
 ## GitHub Release Tags
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
-- Release tags use the `vX.Y.Z` format, for example `v0.1.2`.
+- Release tags use the `vX.Y.Z` format, for example `v0.1.3`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
 - Tag pushes create a GitHub Release and upload Windows/Linux zip assets, Linux AppImage/tar.gz assets, signed checksum files, and the public release key.
@@ -128,8 +128,8 @@ Include:
 Release command:
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 Do not run the tag commands until the release owner has reviewed the final working tree, artifacts, checksums, manual QA notes, and GitHub Actions status.

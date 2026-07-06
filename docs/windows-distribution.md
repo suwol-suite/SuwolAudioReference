@@ -1,10 +1,10 @@
 # Windows Distribution Guide
 
-This guide describes how to distribute Suwol Audio Reference 0.1.2 on Windows before a code-signing certificate is available. The 0.1.2 release workflow is zip-first.
+This guide describes how to distribute Suwol Audio Reference 0.1.3 on Windows before a code-signing certificate is available. The 0.1.3 release workflow is zip-first.
 
 ## Current Artifacts
 
-- Windows zip: `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip`
+- Windows zip: `release\Suwol.Audio.Reference.0.1.3.Windows.x64.zip`
 - Unpacked app: `release\win-unpacked\Suwol Audio Reference.exe`
 
 Generate the unpacked Windows app with:
@@ -29,13 +29,13 @@ npm.cmd run check:release -- --platform win
 
 Users download the Windows zip from GitHub Releases, extract it to a writable folder, and run `Suwol Audio Reference.exe` from the extracted `win-unpacked` folder.
 
-An installer is not the primary 0.1.2 Windows release artifact. The GitHub Actions release workflow uploads the Windows/Linux zip files, publishes Linux AppImage/tar.gz assets with signed checksum files, includes Linux updater metadata, and keeps zip hashes in `SHA256SUMS.txt`.
+An installer is not the primary 0.1.3 Windows release artifact. The GitHub Actions release workflow uploads the Windows/Linux zip files, publishes Linux AppImage/tar.gz assets with signed checksum files, includes Linux updater metadata, and keeps zip hashes in `SHA256SUMS.txt`.
 
 Windows zip builds do not use automatic updates. The Settings Updates tab shows manual GitHub Releases guidance on Windows, expected release asset names for the current version, checksum help, and the app does not call `electron-updater` outside packaged Linux AppImage builds.
 
 Recommended user-facing steps:
 
-1. Download `Suwol.Audio.Reference.0.1.2.Windows.x64.zip` from the official GitHub Release.
+1. Download `Suwol.Audio.Reference.0.1.3.Windows.x64.zip` from the official GitHub Release.
 2. If a checksum file is published, compare the zip SHA-256 hash before running.
 3. Extract the zip to a writable folder, for example under the user's Downloads or Tools folder.
 4. Run `win-unpacked\Suwol Audio Reference.exe`.
@@ -43,7 +43,7 @@ Recommended user-facing steps:
 
 ## Unsigned Build Notice
 
-The current 0.1.2 build is not code signed. Windows SmartScreen, Microsoft Defender, or browser download checks may warn that the publisher is unknown.
+The current 0.1.3 build is not code signed. Windows SmartScreen, Microsoft Defender, or browser download checks may warn that the publisher is unknown.
 
 Do not tell users to ignore security warnings blindly. Instead:
 
@@ -68,12 +68,14 @@ The app does not add an app-managed ffmpeg executable or GPL-family runtime pack
 
 Keep a release folder outside the repository with:
 
-- `Suwol.Audio.Reference.0.1.2.Windows.x64.zip`
-- `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`
+- `Suwol.Audio.Reference.0.1.3.Windows.x64.zip`
+- `Suwol.Audio.Reference.0.1.3.Linux.x64.zip`
+- `Suwol Audio Reference-0.1.3.AppImage`
+- `suwol-audio-reference-0.1.3.tar.gz`
 - Linux AppImage and tar.gz assets from the GitHub Release, when testing Linux distribution
 - `SHA256SUMS.txt`
 - `checksums.txt`, `checksums.txt.asc`, and `suwol-release-public-key.asc`
-- `docs/release-notes-0.1.2.md`
+- `docs/release-notes-0.1.3.md`
 - `docs/known-issues.md`
 - `docs/windows-distribution.md`
 - `docs/linux-distribution.md`

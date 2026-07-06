@@ -46,19 +46,19 @@ describe("release-status-service", () => {
   });
 
   it("includes current version in expected release asset names", () => {
-    const assets = buildExpectedReleaseAssets("0.1.2", "Suwol Audio Reference");
+    const assets = buildExpectedReleaseAssets("0.1.3", "Suwol Audio Reference");
     expect(assets.map((asset) => asset.fileName)).toEqual(
       expect.arrayContaining([
-        "Suwol.Audio.Reference.0.1.2.Windows.x64.zip",
-        "Suwol.Audio.Reference.0.1.2.Linux.x64.zip",
-        "Suwol Audio Reference-0.1.2.AppImage",
-        "Suwol Audio Reference-0.1.2.tar.gz",
+        "Suwol.Audio.Reference.0.1.3.Windows.x64.zip",
+        "Suwol.Audio.Reference.0.1.3.Linux.x64.zip",
+        "Suwol Audio Reference-0.1.3.AppImage",
+        "suwol-audio-reference-0.1.3.tar.gz",
       ]),
     );
   });
 
   it("lists checksum and signature filenames", () => {
-    const assets = buildExpectedReleaseAssets("0.1.2");
+    const assets = buildExpectedReleaseAssets("0.1.3");
     expect(assets.map((asset) => asset.fileName)).toEqual(
       expect.arrayContaining(["checksums.txt", "checksums.txt.asc", "SHA256SUMS.txt", RELEASE_PUBLIC_KEY_FILE_NAME]),
     );
@@ -70,7 +70,7 @@ describe("release-status-service", () => {
     const service = new ReleaseStatusService({
       platform: "win32",
       isPackaged: true,
-      currentVersion: "0.1.2",
+      currentVersion: "0.1.3",
       projectRoot: root,
     });
 
@@ -80,11 +80,11 @@ describe("release-status-service", () => {
   });
 
   it("formats checksum commands with release filenames", () => {
-    expect(formatWindowsChecksumCommand("0.1.2")).toBe(
-      'Get-FileHash ".\\Suwol.Audio.Reference.0.1.2.Windows.x64.zip" -Algorithm SHA256',
+    expect(formatWindowsChecksumCommand("0.1.3")).toBe(
+      'Get-FileHash ".\\Suwol.Audio.Reference.0.1.3.Windows.x64.zip" -Algorithm SHA256',
     );
-    expect(formatLinuxAppImageChecksumCommand("0.1.2")).toBe("sha256sum 'Suwol Audio Reference-0.1.2.AppImage'");
-    expect(buildChecksumCommands("0.1.2").map((command) => command.command)).toEqual(
+    expect(formatLinuxAppImageChecksumCommand("0.1.3")).toBe("sha256sum 'Suwol Audio Reference-0.1.3.AppImage'");
+    expect(buildChecksumCommands("0.1.3").map((command) => command.command)).toEqual(
       expect.arrayContaining([
         "gpg --import suwol-release-public-key.asc",
         "gpg --verify checksums.txt.asc checksums.txt",

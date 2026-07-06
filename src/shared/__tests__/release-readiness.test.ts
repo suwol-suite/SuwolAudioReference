@@ -124,9 +124,49 @@ describe("release readiness docs and checks", () => {
     expect(output).toContain(`release tag check ok: v${APP_VERSION}`);
   });
 
-  it("documents the 0.1.2 project export release scope", () => {
+  it("accepts URL-encoded AppImage references in Linux updater metadata", () => {
+    const root = join(tmpdir(), `suwol-linux-updater-check-${crypto.randomUUID()}`);
+    const appImageName = `Suwol Audio Reference-${APP_VERSION}.AppImage`;
+    const tarballName = `suwol-audio-reference-${APP_VERSION}.tar.gz`;
+
+    mkdirSync(root, { recursive: true });
+    for (const relativePath of [appImageName, `${appImageName}.blockmap`, tarballName, "checksums.txt"]) {
+      writeFileSync(join(root, relativePath), "fixture", "utf8");
+    }
+    writeFileSync(
+      join(root, "latest-linux.yml"),
+      [
+        `version: ${APP_VERSION}`,
+        "files:",
+        `  - url: https://github.com/suwol-suite/SuwolAudioReference/releases/download/v${APP_VERSION}/${encodeURIComponent(appImageName)}`,
+        "    sha512: fixture-sha512",
+        "    size: 7",
+        `path: ./${encodeURIComponent(appImageName)}`,
+        "sha512: fixture-sha512",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const checksumContent = [
+      `${createHash("sha256").update("fixture").digest("hex")}  ${appImageName}`,
+      `${createHash("sha256").update("fixture").digest("hex")}  ${tarballName}`,
+      "",
+    ].join("\n");
+    writeFileSync(join(root, "checksums.txt"), checksumContent, "utf8");
+
+    const output = execFileSync(process.execPath, [join(process.cwd(), "scripts", "check-linux-updater-artifacts.mjs"), root], {
+      encoding: "utf8",
+    });
+
+    expect(output).toContain("linux updater artifacts ok");
+    expect(output).toContain(`appimage: ${appImageName}`);
+  });
+
+  it("documents the 0.1.3 release recovery and project export scope", () => {
     const notes = readFileSync(join(process.cwd(), APP_RELEASE_NOTES_DOC), "utf8");
 
+    expect(notes).toContain("release-flow recovery");
+    expect(notes).toContain("Linux AppImage auto-update readiness");
     expect(notes).toContain("Game Project");
     expect(notes).toContain("Sound Usage Board");
     expect(notes).toContain("Project Sound Pack");
@@ -135,6 +175,6 @@ describe("release readiness docs and checks", () => {
     expect(notes).toContain("Project Codex Instruction");
     expect(notes).toContain("Export Center game-project source");
     expect(notes).toContain("Local export history");
-    expect(notes).toContain("97 tests passed");
+    expect(notes).toContain("121 tests passed");
   });
 });

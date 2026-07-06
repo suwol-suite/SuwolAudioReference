@@ -73,6 +73,7 @@ export function resolveReleaseDistribution(input: ReleaseStatusSupportInput): {
 
 export function buildExpectedReleaseAssets(version: string, appName = APP_NAME): ReleaseAssetExpectation[] {
   const productSlug = appName.replace(/\s+/g, ".");
+  const packageSlug = appName.replace(/\s+/g, "-").toLowerCase();
   const appImageName = `${appName}-${version}.AppImage`;
   return [
     {
@@ -92,7 +93,7 @@ export function buildExpectedReleaseAssets(version: string, appName = APP_NAME):
     },
     {
       kind: "linux_tarball",
-      fileName: `${appName}-${version}.tar.gz`,
+      fileName: `${packageSlug}-${version}.tar.gz`,
       requiredFor: "manual_download",
     },
     {

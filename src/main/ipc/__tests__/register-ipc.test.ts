@@ -26,7 +26,7 @@ describe("registerIpcHandlers release status", () => {
   it("returns release status through the releaseStatus:get IPC handler", async () => {
     const { registerIpcHandlers } = await import("../register-ipc");
     const releaseStatus = {
-      currentVersion: "0.1.2",
+      currentVersion: "0.1.3",
       distributionKind: "windows_zip",
     };
     const releaseStatusService = {

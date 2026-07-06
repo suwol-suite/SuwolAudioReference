@@ -1,6 +1,6 @@
 # Known Issues
 
-This document lists known limitations and release notes for Suwol Audio Reference 0.1.2. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
+This document lists known limitations and release notes for Suwol Audio Reference 0.1.3. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
 
 ## Unsigned Windows App Warning
 
@@ -32,7 +32,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 
 ## Portable Distribution Without Installers
 
-- Symptom: 0.1.2 publishes a Windows zip and Linux zip/AppImage/tar.gz artifacts instead of installers or app-store style packages.
+- Symptom: 0.1.3 publishes a Windows zip and Linux zip/AppImage/tar.gz artifacts instead of installers or app-store style packages.
 - Impact: Windows users must extract the zip and run the executable from the extracted folder. Linux users may need to set executable permission before running AppImage or extracted builds.
 - Temporary handling: Publish release notes, hashes, signed Linux checksum files, source information, and distribution guides next to the release artifacts.
 - Future plan: Evaluate installers, native packages, or code-signed app binaries only after the MVP release workflow is stable.
@@ -47,7 +47,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 ## Release Status Dashboard Asset Names
 
 - Symptom: Settings Updates shows expected asset names for the current app version. Windows/Linux zip names come from the repository zip script, while Linux AppImage/tar.gz names follow electron-builder output.
-- Impact: If a future workflow renames AppImage or tar.gz files, the dashboard may need its release status helper updated to match the new release assets.
+- Impact: The AppImage and tar.gz names may not use the same dot-separated convention as the zip names.
 - Temporary handling: Compare the dashboard with the GitHub Release asset list during release QA.
 - Future plan: Keep the helper aligned with the release workflow whenever distribution naming changes.
 
@@ -56,7 +56,14 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Symptom: Project Manifest, Project Sound Pack, Unity, Unreal, and MonoGame exports create local handoff files but do not patch game projects directly.
 - Impact: Users must manually import or copy generated manifests/lists/audio into their engine project if desired.
 - Temporary handling: Review generated `README.md`, manifests, and content lists inside the export folder.
-- Future plan: Keep direct engine project mutation out of 0.1.2 unless a later phase explicitly scopes an integration.
+- Future plan: Keep direct engine project mutation out of 0.1.3 unless a later phase explicitly scopes an integration.
+
+## Historical Failed Tag
+
+- Symptom: The `v0.1.2` tag points at the failed tag-workflow commit and is intentionally left untouched.
+- Impact: Re-running the `v0.1.2` tag workflow would use the same old commit and fail again.
+- Temporary handling: Publish the corrected release as `v0.1.3` instead of moving or recreating `v0.1.2`.
+- Future plan: Keep release recovery tags immutable and document failed historical tags in release notes.
 
 ## Large Library Performance Expectations
 
