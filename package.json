@@ -74,6 +74,7 @@
       "dist/**/*",
       "package.json",
       "README.md",
+      "suwol-release-public-key.asc",
       "docs/**/*",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",

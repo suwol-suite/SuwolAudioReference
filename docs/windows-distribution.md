@@ -31,7 +31,7 @@ Users download the Windows zip from GitHub Releases, extract it to a writable fo
 
 An installer is not the primary 0.1.2 Windows release artifact. The GitHub Actions release workflow uploads the Windows/Linux zip files, publishes Linux AppImage/tar.gz assets with signed checksum files, includes Linux updater metadata, and keeps zip hashes in `SHA256SUMS.txt`.
 
-Windows zip builds do not use automatic updates. The Settings Updates tab shows manual GitHub Releases guidance on Windows, and the app does not call `electron-updater` outside packaged Linux AppImage builds.
+Windows zip builds do not use automatic updates. The Settings Updates tab shows manual GitHub Releases guidance on Windows, expected release asset names for the current version, checksum help, and the app does not call `electron-updater` outside packaged Linux AppImage builds.
 
 Recommended user-facing steps:
 

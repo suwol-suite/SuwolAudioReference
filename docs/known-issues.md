@@ -44,6 +44,13 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Temporary handling: Use the Settings Updates tab to open GitHub Releases and download manually when auto update is unsupported or metadata is missing.
 - Future plan: Keep Windows signing/store strategy, Snap, Flatpak, app stores, and broader update channels in later phases.
 
+## Release Status Dashboard Asset Names
+
+- Symptom: Settings Updates shows expected asset names for the current app version. Windows/Linux zip names come from the repository zip script, while Linux AppImage/tar.gz names follow electron-builder output.
+- Impact: If a future workflow renames AppImage or tar.gz files, the dashboard may need its release status helper updated to match the new release assets.
+- Temporary handling: Compare the dashboard with the GitHub Release asset list during release QA.
+- Future plan: Keep the helper aligned with the release workflow whenever distribution naming changes.
+
 ## Engine Project Files Are Not Modified
 
 - Symptom: Project Manifest, Project Sound Pack, Unity, Unreal, and MonoGame exports create local handoff files but do not patch game projects directly.

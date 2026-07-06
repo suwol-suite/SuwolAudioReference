@@ -63,7 +63,7 @@ The exact executable name is checked by `scripts/check-release-artifacts.mjs`; i
 - AppImage is the only Linux package type with automatic updates.
 - tar.gz and zip builds use manual GitHub Releases downloads.
 - Development mode never checks GitHub Releases for updates.
-- The Settings Updates tab shows current version, update status, manual check/download/install actions, and unsupported-package guidance.
+- The Settings Updates tab shows current version, distribution type, update status, manual check/download/install actions, expected release assets, checksum commands, and unsupported-package guidance.
 - If an AppImage update is not detected, confirm the GitHub Release includes the AppImage, `latest-linux.yml`, and generated `.blockmap` files.
 - Snap and Flatpak packages are not part of the 0.1.2 distribution.
 - Playback support can vary by Linux distribution, Chromium codec support, and installed system libraries.

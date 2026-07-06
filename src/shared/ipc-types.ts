@@ -55,6 +55,7 @@ import type {
 import type { Locale } from "./i18n/locales";
 import type { AppSettings, AppUpdateSettingsInput, QuickPreviewSettingsInput } from "./settings-types";
 import type { UpdateState } from "./update-types";
+import type { ReleaseStatus } from "./release-status-types";
 import type {
   ProjectSoundPackDryRun,
   ProjectSoundPackExportResult,
@@ -344,6 +345,12 @@ export interface SuwolAudioApi {
     install: () => Promise<UpdateState>;
     openReleasePage: () => Promise<UpdateState>;
     onStateChanged: (callback: (state: UpdateState) => void) => () => void;
+  };
+  releaseStatus: {
+    get: () => Promise<ReleaseStatus>;
+    openReleases: () => Promise<ReleaseStatus>;
+    openLatestRelease: () => Promise<ReleaseStatus>;
+    openChecksumsHelp: () => Promise<ReleaseStatus>;
   };
   diagnostics: {
     runLibraryDiagnostics: () => Promise<LibraryDiagnostics | null>;

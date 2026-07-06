@@ -7,6 +7,7 @@ import { createAppServices } from "./services/app-services";
 import { registerProcessErrorHandlers, registerWindowErrorLogging } from "./services/error-service";
 import { registerIpcHandlers } from "./ipc/register-ipc";
 import { createLinuxUpdateService } from "./services/linux-update-service";
+import { createReleaseStatusService } from "./services/release-status-service";
 import { registerSingleInstanceLock } from "./single-instance-lock";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,8 +28,23 @@ if (hasSingleInstanceLock) {
     logger: services.loggerService,
     openReleasePage: (url) => shell.openExternal(url),
   });
+  const releaseStatusService = createReleaseStatusService({
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    appImagePath: process.env.APPIMAGE,
+    currentVersion: app.getVersion(),
+    projectRoot: join(__dirname, "../.."),
+    logger: services.loggerService,
+    openExternal: (url) => shell.openExternal(url),
+  });
   registerProcessErrorHandlers(services.loggerService);
-  registerIpcHandlers(services, () => mainWindow, () => refreshApplicationMenu(services.settingsService), updateService);
+  registerIpcHandlers(
+    services,
+    () => mainWindow,
+    () => refreshApplicationMenu(services.settingsService),
+    updateService,
+    releaseStatusService,
+  );
 
   async function createWindow(): Promise<void> {
     mainWindow = new BrowserWindow({

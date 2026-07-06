@@ -225,6 +225,12 @@ const api: SuwolAudioApi = {
       return () => ipcRenderer.removeListener("updates:stateChanged", listener);
     },
   },
+  releaseStatus: {
+    get: () => ipcRenderer.invoke("releaseStatus:get"),
+    openReleases: () => ipcRenderer.invoke("releaseStatus:openReleases"),
+    openLatestRelease: () => ipcRenderer.invoke("releaseStatus:openLatestRelease"),
+    openChecksumsHelp: () => ipcRenderer.invoke("releaseStatus:openChecksumsHelp"),
+  },
   diagnostics: {
     runLibraryDiagnostics: () => ipcRenderer.invoke("diagnostics:runLibrary"),
     openLogFolder: () => ipcRenderer.invoke("diagnostics:openLogFolder"),

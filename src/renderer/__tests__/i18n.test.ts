@@ -100,7 +100,15 @@ describe("i18n", () => {
     expect(translate("ko", "updates.check")).toContain("업데이트");
     expect(translate("en", "updates.windowsManual")).toContain("manual");
     expect(translate("ko", "updates.linuxTarManual")).toContain("AppImage");
+    expect(translate("en", "updates.releaseStatus")).toBe("Release Status");
+    expect(translate("ko", "updates.releaseStatus")).toContain("릴리즈");
+    expect(translate("en", "updates.linuxAppImageAutoUpdate")).toContain("AppImage");
+    expect(translate("ko", "updates.windowsManualUpdate")).toContain("Windows");
+    expect(translate("en", "updates.command.linux_verify_signature")).toContain("signature");
+    expect(translate("ko", "updates.command.linux_verify_checksums")).toContain("Checksums");
     expect(translateError("en", "UPDATE_CHECK_FAILED")).toContain("Update");
     expect(translateError("ko", "UPDATE_DOWNLOAD_FAILED")).toContain("업데이트");
+    expect(translateError("en", "RELEASE_STATUS_LOAD_FAILED")).toContain("Release");
+    expect(translateError("ko", "CHECKSUM_HELP_OPEN_FAILED")).toContain("Checksum");
   });
 });

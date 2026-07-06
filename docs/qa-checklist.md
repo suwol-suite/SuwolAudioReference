@@ -21,6 +21,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - The GitHub Actions Linux tag job passes `npm run check:linux-updater -- dist --require-signature` and uploads the AppImage, `latest-linux.yml`, blockmap files, `checksums.txt`, and `checksums.txt.asc`.
 - `package.json` version is `0.1.2`, `engines.node` is Node 24+, license is `Apache-2.0`, Windows packaging remains zip-first, and Linux release packaging includes AppImage/tar.gz.
 - Update settings default to `checkOnStartup=false`, `autoDownload=false`, and Linux AppImage-only policy.
+- Settings Updates shows the Release Status dashboard, current version, distribution type, expected release assets, checksum commands, and GitHub Releases actions.
 
 ## Fixture Set
 
@@ -372,3 +373,5 @@ Do not commit generated fixture audio.
 - Download the GitHub Actions Linux artifact or GitHub Release Linux AppImage/zip/tar.gz, verify signed checksums when available, set executable permission if needed, and run the packaged executable.
 - On Linux AppImage, confirm Settings Updates shows automatic update support and manual check/download/install controls.
 - On Windows zip and Linux tar.gz/zip, confirm Settings Updates shows manual GitHub Releases guidance and does not start an updater check.
+- Confirm Settings Updates shows Windows zip, Linux AppImage, Linux tar.gz, `checksums.txt`, `checksums.txt.asc`, `SHA256SUMS.txt`, and `suwol-release-public-key.asc` as expected release assets for the current version.
+- Confirm the checksum help shows `gpg --import suwol-release-public-key.asc`, `gpg --verify checksums.txt.asc checksums.txt`, and `shasum -a 256 -c checksums.txt`.

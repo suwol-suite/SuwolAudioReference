@@ -1,9 +1,16 @@
-import { Download, ExternalLink, RefreshCw, RotateCcw } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
+import type {
+  ReleaseAssetExpectation,
+  ReleaseAssetKind,
+  ReleaseDistributionKind,
+  ReleaseStatus,
+} from "../../shared/release-status-types";
 import type { AppSettings } from "../../shared/settings-types";
 import type { UpdatePlatformSupport, UpdateState, UpdateStatus } from "../../shared/update-types";
 import type { MessageKey } from "../i18n/i18n";
 import { useI18n } from "../i18n/useI18n";
+import { ChecksumHelpPanel } from "./ChecksumHelpPanel";
 
 interface UpdatePanelProps {
   settings: AppSettings;
@@ -13,6 +20,8 @@ interface UpdatePanelProps {
 export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): JSX.Element {
   const { t, format } = useI18n();
   const [state, setState] = useState<UpdateState | null>(null);
+  const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus | null>(null);
+  const [releaseStatusLoadFailed, setReleaseStatusLoadFailed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -21,6 +30,19 @@ export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): 
         setState(next);
       }
     });
+    void window.suwolAudio.releaseStatus
+      .get()
+      .then((next) => {
+        if (mounted) {
+          setReleaseStatus(next);
+          setReleaseStatusLoadFailed(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setReleaseStatusLoadFailed(true);
+        }
+      });
     const unsubscribe = window.suwolAudio.updates.onStateChanged((next) => setState(next));
     return () => {
       mounted = false;
@@ -28,9 +50,14 @@ export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): 
     };
   }, []);
 
-  async function run(action: "check" | "download" | "install" | "openReleasePage"): Promise<void> {
+  async function run(action: "check" | "download" | "install"): Promise<void> {
     const next = await window.suwolAudio.updates[action]();
     setState(next);
+  }
+
+  async function runReleaseAction(action: "openReleases" | "openLatestRelease" | "openChecksumsHelp"): Promise<void> {
+    const next = await window.suwolAudio.releaseStatus[action]();
+    setReleaseStatus(next);
   }
 
   async function updateSettings(input: Partial<AppSettings["updates"]>): Promise<void> {
@@ -50,26 +77,55 @@ export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): 
   const canCheck = resolvedState.supported && !busy;
   const canDownload = resolvedState.supported && resolvedState.status === "available" && !busy;
   const canInstall = resolvedState.supported && resolvedState.status === "downloaded";
+  const releaseStatusErrorCode =
+    releaseStatus?.lastErrorCode ?? (releaseStatusLoadFailed ? "RELEASE_STATUS_LOAD_FAILED" : undefined);
+  const currentVersion = releaseStatus?.currentVersion ?? resolvedState.currentVersion;
 
   return (
     <div className="settings-section update-panel">
       <div className="section-heading-row">
         <div>
-          <h3>{t("updates.title")}</h3>
+          <h3>{t("updates.releaseStatus")}</h3>
           <p className="muted">{t(getUpdateSupportMessageKey(resolvedState.supportReason, resolvedState.supported))}</p>
         </div>
-        <button className="secondary-button compact" type="button" onClick={() => void run("openReleasePage")}>
+        <button className="secondary-button compact" type="button" onClick={() => void runReleaseAction("openReleases")}>
           <ExternalLink size={15} aria-hidden="true" />
           {t("updates.openReleasePage")}
         </button>
       </div>
 
-      <dl className="diagnostics-grid update-state-grid">
-        <Metric label={t("updates.currentVersion")} value={resolvedState.currentVersion || t("common.unknown")} />
-        <Metric label={t("updates.status")} value={t(getUpdateStatusKey(resolvedState.status))} />
-        <Metric label={t("updates.availableVersion")} value={resolvedState.availableVersion ?? t("common.unknown")} />
-        <Metric label={t("updates.downloadedVersion")} value={resolvedState.downloadedVersion ?? t("common.unknown")} />
-      </dl>
+      {releaseStatusErrorCode ? <p className="error-text">{t(`error.${releaseStatusErrorCode}` as MessageKey)}</p> : null}
+
+      <section className="update-subsection">
+        <h4>{t("updates.currentApp")}</h4>
+        <dl className="diagnostics-grid update-state-grid">
+          <Metric label={t("updates.currentVersion")} value={currentVersion || t("common.unknown")} />
+          <Metric label={t("updates.platform")} value={releaseStatus?.platform ?? t("common.unknown")} />
+          <Metric
+            label={t("updates.distributionType")}
+            value={releaseStatus ? t(getReleaseDistributionLabelKey(releaseStatus.distributionKind)) : t("common.unknown")}
+          />
+          <Metric
+            label={t("updates.publicKey")}
+            value={releaseStatus?.publicKey.available ? t("updates.publicKeyAvailable") : t("updates.publicKeyMissing")}
+          />
+        </dl>
+      </section>
+
+      <section className="update-subsection">
+        <div className="update-subsection-heading">
+          <h4>{t("updates.autoUpdate")}</h4>
+          <span className={resolvedState.supported ? "compact-status positive" : "compact-status neutral"}>
+            {resolvedState.supported ? t("updates.autoUpdateSupported") : t("updates.autoUpdateNotSupported")}
+          </span>
+        </div>
+        <dl className="diagnostics-grid update-state-grid">
+          <Metric label={t("updates.status")} value={t(getUpdateStatusKey(resolvedState.status))} />
+          <Metric label={t("updates.availableVersion")} value={resolvedState.availableVersion ?? t("common.unknown")} />
+          <Metric label={t("updates.downloadedVersion")} value={resolvedState.downloadedVersion ?? t("common.unknown")} />
+          <Metric label={t("updates.autoUpdatePolicy")} value={t(getReleaseAutoUpdatePolicyKey(releaseStatus?.distributionKind, resolvedState.supported))} />
+        </dl>
+      </section>
 
       {resolvedState.progress ? (
         <div className="update-progress" role="status" aria-live="polite">
@@ -127,6 +183,56 @@ export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): 
         </label>
         <p className="muted">{t("updates.settingsPolicy")}</p>
       </div>
+
+      {releaseStatus ? (
+        <>
+          <section className="update-subsection">
+            <div className="update-subsection-heading">
+              <h4>{t("updates.manualDownload")}</h4>
+              <span className="compact-status neutral">{t("updates.manualDownloadRequired")}</span>
+            </div>
+            <div className="management-actions">
+              <button className="secondary-button compact" type="button" onClick={() => void runReleaseAction("openLatestRelease")}>
+                <ExternalLink size={15} aria-hidden="true" />
+                {t("updates.openLatestRelease")}
+              </button>
+              <button className="secondary-button compact" type="button" onClick={() => void runReleaseAction("openReleases")}>
+                <ExternalLink size={15} aria-hidden="true" />
+                {t("updates.openReleasePage")}
+              </button>
+              <button className="secondary-button compact" type="button" onClick={() => void runReleaseAction("openChecksumsHelp")}>
+                <ShieldCheck size={15} aria-hidden="true" />
+                {t("updates.openChecksumHelp")}
+              </button>
+            </div>
+          </section>
+
+          <section className="update-subsection">
+            <h4>{t("updates.releaseAssets")}</h4>
+            <div className="release-assets-list" aria-label={t("updates.expectedAssets")}>
+              {releaseStatus.expectedAssets.map((asset) => (
+                <ReleaseAssetRow asset={asset} key={`${asset.kind}:${asset.fileName}`} />
+              ))}
+            </div>
+          </section>
+
+          <section className="update-subsection">
+            <h4>{t("updates.checksumVerification")}</h4>
+            <ChecksumHelpPanel status={releaseStatus} />
+          </section>
+
+          <section className="update-subsection">
+            <h4>{t("updates.knownLimits")}</h4>
+            <ul className="release-notes-list">
+              <li>{t("updates.autoUpdateOnlyAppImage")}</li>
+              <li>{t("updates.windowsManualUpdate")}</li>
+              <li>{t("updates.linuxTarManualUpdate")}</li>
+              <li>{t("updates.noCodeSigning")}</li>
+              <li>{t("updates.developmentMode")}</li>
+            </ul>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -148,11 +254,43 @@ export function getUpdateStatusKey(status: UpdateStatus): MessageKey {
   return `updates.status.${status}` as MessageKey;
 }
 
+export function getReleaseDistributionLabelKey(kind: ReleaseDistributionKind): MessageKey {
+  return `updates.distribution.${kind}` as MessageKey;
+}
+
+export function getReleaseAutoUpdatePolicyKey(kind: ReleaseDistributionKind | undefined, supported: boolean): MessageKey {
+  if (supported || kind === "linux_appimage") {
+    return "updates.linuxAppImageAutoUpdate";
+  }
+  if (kind === "development") {
+    return "updates.developmentMode";
+  }
+  if (kind === "windows_zip") {
+    return "updates.windowsManualUpdate";
+  }
+  return "updates.linuxTarManualUpdate";
+}
+
+export function getReleaseAssetLabelKey(kind: ReleaseAssetKind): MessageKey {
+  return `updates.asset.${kind}` as MessageKey;
+}
+
 function Metric({ label, value }: { label: string; value: string }): JSX.Element {
   return (
     <div>
       <dt>{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+function ReleaseAssetRow({ asset }: { asset: ReleaseAssetExpectation }): JSX.Element {
+  const { t } = useI18n();
+  return (
+    <div className="release-asset-row">
+      <CheckCircle2 size={14} aria-hidden="true" />
+      <span>{t(getReleaseAssetLabelKey(asset.kind))}</span>
+      <code>{asset.fileName}</code>
     </div>
   );
 }

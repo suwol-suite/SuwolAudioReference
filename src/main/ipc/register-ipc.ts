@@ -21,6 +21,7 @@ import type {
 import type { Locale } from "../../shared/i18n/locales";
 import type { QuickPreviewSettingsInput } from "../../shared/settings-types";
 import type { LinuxUpdateService } from "../services/linux-update-service";
+import type { ReleaseStatusService } from "../services/release-status-service";
 import type { ProjectSoundPackOptions } from "../../shared/project-sound-pack-types";
 import type {
   GameProjectInput,
@@ -66,6 +67,7 @@ export function registerIpcHandlers(
   getWindow: () => BrowserWindow | null,
   onLocaleChanged: () => Promise<void>,
   updateService?: LinuxUpdateService,
+  releaseStatusService?: ReleaseStatusService,
 ): void {
   updateService?.onStateChanged((state) => {
     getWindow()?.webContents.send("updates:stateChanged", state);
@@ -243,6 +245,10 @@ export function registerIpcHandlers(
   ipcMain.handle("updates:download", () => updateService?.downloadUpdate());
   ipcMain.handle("updates:install", () => updateService?.installUpdate());
   ipcMain.handle("updates:openReleasePage", () => updateService?.openReleasePage());
+  ipcMain.handle("releaseStatus:get", () => releaseStatusService?.getStatus());
+  ipcMain.handle("releaseStatus:openReleases", () => releaseStatusService?.openReleases());
+  ipcMain.handle("releaseStatus:openLatestRelease", () => releaseStatusService?.openLatestRelease());
+  ipcMain.handle("releaseStatus:openChecksumsHelp", () => releaseStatusService?.openChecksumsHelp());
 
   ipcMain.handle("diagnostics:runLibrary", () => services.diagnosticsService.runLibraryDiagnostics());
   ipcMain.handle("diagnostics:openLogFolder", async () => {

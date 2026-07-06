@@ -54,6 +54,7 @@ This repository is preparing a Windows MVP release. The current build includes:
 - Settings tabs for general, playback, library management, shortcuts, and about.
 - Windows packaging metadata and generated application icons.
 - GitHub Actions workflow for Windows/Linux zip artifacts, tag-based Linux AppImage/tar.gz assets, signed checksum files, Linux AppImage update metadata, and GitHub Releases.
+- Settings > Updates includes an Update / Release Status Dashboard with current version, distribution type, auto-update support, release download links, expected assets, and checksum verification commands.
 
 ## Supported Platform
 
@@ -450,6 +451,7 @@ Linux AppImage automatic updates:
 - Available only when the packaged app is running from a Linux AppImage.
 - Disabled in development mode, Windows zip builds, Linux tar.gz builds, and any non-AppImage package.
 - The Settings Updates tab lets users check manually, download after a result is available, and restart to install after the download completes.
+- The same tab shows the current distribution type, expected Windows zip/Linux AppImage/Linux tar.gz assets for the current version, and links to the latest GitHub Release.
 - The default settings do not check on startup and do not download automatically.
 - If updates are not detected, confirm the GitHub Release includes the AppImage, `latest-linux.yml`, and any generated `.blockmap` files.
 
