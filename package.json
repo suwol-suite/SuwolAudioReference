@@ -21,6 +21,7 @@
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "check:release": "node scripts/check-release-artifacts.mjs",
     "check:linux-updater": "node scripts/check-linux-updater-artifacts.mjs",
+    "ensure:electron-dist": "node scripts/ensure-electron-dist.mjs",
     "checksums": "node scripts/generate-checksums.mjs",
     "zip:win": "node scripts/zip-release.mjs win",
     "zip:linux": "node scripts/zip-release.mjs linux",
@@ -33,11 +34,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "audit": "npm audit",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder --win",
-    "dist:win:dir": "npm run build && electron-builder --win dir",
-    "dist:linux:dir": "npm run build && electron-builder --linux dir",
-    "dist:linux:release": "npm run build && electron-builder --linux AppImage tar.gz --publish never"
+    "pack": "npm run build && npm run ensure:electron-dist && electron-builder --dir",
+    "dist": "npm run build && npm run ensure:electron-dist && electron-builder --win",
+    "dist:win:dir": "npm run build && npm run ensure:electron-dist && electron-builder --win dir",
+    "dist:linux:dir": "npm run build && npm run ensure:electron-dist && electron-builder --linux dir",
+    "dist:linux:release": "npm run build && npm run ensure:electron-dist && electron-builder --linux AppImage tar.gz --publish never"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
