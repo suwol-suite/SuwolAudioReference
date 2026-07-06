@@ -14,7 +14,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: [/^node:/, "electron"],
+      external: [/^node:/, "electron", "electron-updater"],
       output: {
         entryFileNames: "[name].js",
       },

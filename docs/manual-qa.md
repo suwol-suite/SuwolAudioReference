@@ -11,7 +11,7 @@ Fill this in before publishing a 0.1.2 build:
 - Tester:
 - Date:
 - Windows version:
-- Artifact type: unpacked / extracted Windows zip / Linux zip
+- Artifact type: unpacked / extracted Windows zip / Linux AppImage / Linux tar.gz / Linux zip
 - Artifact path:
 - Fixture folder:
 - Commit:
@@ -23,7 +23,9 @@ Fill this in before publishing a 0.1.2 build:
 - Close any running Suwol Audio Reference windows before launching a packaged build.
 - Prefer `release\win-unpacked\Suwol Audio Reference.exe` for the full Windows manual pass.
 - Extract `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip` to a normal writable folder before running the executable from the extracted `win-unpacked` folder.
-- Use the GitHub Actions Linux artifact or GitHub Release Linux zip for Linux smoke on a Linux test machine.
+- Use the GitHub Actions Linux artifact or GitHub Release Linux AppImage/tar.gz/zip for Linux smoke on a Linux test machine.
+- On Linux AppImage, open Settings Updates and confirm manual check/download/install controls are visible.
+- On Windows zip or Linux tar.gz/zip, open Settings Updates and confirm manual GitHub Releases guidance is shown instead of auto-update controls.
 - Keep fixture audio outside the repository, for example under `C:\Temp\suwol-audio-phase6-fixtures`.
 - Do not run multiple GUI smoke commands at the same time.
 
@@ -248,7 +250,7 @@ If a duplicate window appears, stop GUI smoke, record the exact command or execu
 ## K. Release Sign-Off
 
 1. Confirm `docs/release-notes-0.1.2.md` matches the tested artifact.
-2. Confirm `docs/known-issues.md` covers unsigned Windows warnings, zip-first distribution, Linux playback differences, copy-only Project Sound Pack export, and no direct engine project mutation.
+2. Confirm `docs/known-issues.md` covers unsigned Windows warnings, portable distribution, Linux playback differences, copy-only Project Sound Pack export, and no direct engine project mutation.
 3. Confirm `docs/release-checklist.md` automated gates are complete.
 4. Confirm no stage, commit, push, tag, or GitHub Release action was performed during the QA documentation pass.
 5. Record any manual QA gaps that still need a human tester before publishing.

@@ -14,6 +14,7 @@ import type { MessageKey } from "../i18n/i18n";
 import { useI18n } from "../i18n/useI18n";
 import { LanguageSelect } from "./LanguageSelect";
 import { LibraryManagementPanel } from "./LibraryManagementPanel";
+import { UpdatePanel } from "./UpdatePanel";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -22,9 +23,9 @@ interface SettingsDialogProps {
   selectedAssetIds?: string[];
 }
 
-type SettingsTab = "general" | "playback" | "library" | "shortcuts" | "about";
+type SettingsTab = "general" | "playback" | "updates" | "library" | "shortcuts" | "about";
 
-const SETTINGS_TABS: SettingsTab[] = ["general", "playback", "library", "shortcuts", "about"];
+const SETTINGS_TABS: SettingsTab[] = ["general", "playback", "updates", "library", "shortcuts", "about"];
 
 export function SettingsDialog({
   open,
@@ -149,6 +150,13 @@ export function SettingsDialog({
               {t("quickPreview.stopPrevious")}
             </label>
           </div>
+        ) : null}
+
+        {activeTab === "updates" && settings ? (
+          <UpdatePanel settings={settings} onSettingsChanged={(next) => {
+            setSettings(next);
+            onSettingsChanged?.(next);
+          }} />
         ) : null}
 
         {activeTab === "library" ? (

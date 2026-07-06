@@ -70,7 +70,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    name: Linux zip
+    name: Linux zip and signed packages
     runs-on: ubuntu-latest
 
     steps:
@@ -129,6 +129,105 @@ jobs:
           path: release/*.zip
           if-no-files-found: error
 
+      - name: Build Linux AppImage and tarball
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm run dist:linux:release
+
+      - name: Stage Linux release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          shopt -s nullglob
+          linux_assets=(release/*.AppImage release/*.tar.gz release/*.deb release/*.rpm)
+          if [ "${#linux_assets[@]}" -eq 0 ]; then
+            echo "No Linux release artifacts found in release/" >&2
+            exit 1
+          fi
+          cp "${linux_assets[@]}" dist/
+          test -s release/latest-linux.yml
+          cp release/latest-linux.yml dist/
+          blockmaps=(release/*.blockmap)
+          if [ "${#blockmaps[@]}" -gt 0 ]; then
+            cp "${blockmaps[@]}" dist/
+          fi
+          cp suwol-release-public-key.asc dist/
+
+      - name: Import GPG private key
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GPG_PRIVATE_KEY_B64}"
+          printf '%s' "${GPG_PRIVATE_KEY_B64}" | base64 --decode > private.asc
+          gpg --batch --import private.asc
+          rm -f private.asc
+        env:
+          GPG_PRIVATE_KEY_B64: ${{ secrets.GPG_PRIVATE_KEY_B64 }}
+
+      - name: Create Linux release checksums
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          mapfile -d '' linux_assets < <(find . -maxdepth 1 -type f \( -name "*.AppImage" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" \) -printf "%f\0" | sort -z)
+          if [ "${#linux_assets[@]}" -eq 0 ]; then
+            echo "No Linux release artifacts found for checksums" >&2
+            exit 1
+          fi
+          : > checksums.txt
+          for asset in "${linux_assets[@]}"; do
+            sha256sum "$asset" >> checksums.txt
+          done
+          test -s checksums.txt
+
+      - name: Sign Linux release checksums
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          test -n "${GPG_PASSPHRASE}"
+          printf '%s' "${GPG_PASSPHRASE}" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 \
+            --armor --detach-sign --output checksums.txt.asc checksums.txt
+          test -s checksums.txt.asc
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Verify Linux release signature and checksums
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          gpg --import suwol-release-public-key.asc
+          cd dist
+          gpg --verify checksums.txt.asc checksums.txt
+          sha256sum -c checksums.txt
+
+      - name: Check Linux updater artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm run check:linux-updater -- dist --require-signature
+
+      - name: Upload Linux signed release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v5
+        with:
+          name: Suwol Audio Reference Linux signed release assets
+          path: |
+            dist/*.AppImage
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/latest-linux.yml
+            dist/*.blockmap
+            dist/checksums.txt
+            dist/checksums.txt.asc
+            dist/suwol-release-public-key.asc
+          if-no-files-found: error
+
   release:
     name: GitHub Release
     needs:
@@ -146,7 +245,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Download release zips
+      - name: Download release artifacts
         uses: actions/download-artifact@v5
         with:
           path: artifacts
@@ -167,4 +266,13 @@ jobs:
           body_path: docs/release-notes-${{ steps.release_version.outputs.version }}.md
           files: |
             artifacts/*.zip
+            artifacts/*.AppImage
+            artifacts/*.tar.gz
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/latest-linux.yml
+            artifacts/*.blockmap
+            artifacts/checksums.txt
+            artifacts/checksums.txt.asc
+            artifacts/suwol-release-public-key.asc
             artifacts/SHA256SUMS.txt

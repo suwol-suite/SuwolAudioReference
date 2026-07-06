@@ -2,7 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { app } from "electron";
 import { DEFAULT_LOCALE, isSupportedLocale, resolveLocale, type Locale } from "../../shared/i18n/locales";
-import type { AppSettings, QuickPreviewSettingsInput } from "../../shared/settings-types";
+import type { AppSettings, AppUpdateSettingsInput, QuickPreviewSettingsInput } from "../../shared/settings-types";
+import type { UpdateSettings } from "../../shared/update-types";
 
 const DEFAULT_SETTINGS: AppSettings = {
   locale: DEFAULT_LOCALE,
@@ -11,6 +12,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   quickPreviewMaxDurationMs: 3000,
   quickPreviewAutoPlayShortSounds: false,
   stopPreviousOnSelectionChange: true,
+  updates: {
+    checkOnStartup: false,
+    autoDownload: false,
+    linuxAppImageOnly: true,
+  },
 };
 
 export class SettingsService {
@@ -24,6 +30,7 @@ export class SettingsService {
         ...parsed,
         locale: resolveLocale(parsed.locale, app.getLocale()),
         quickPreviewMaxDurationMs: normalizeQuickPreviewDuration(parsed.quickPreviewMaxDurationMs),
+        updates: normalizeUpdateSettings(parsed.updates),
       };
     } catch {
       return {
@@ -62,9 +69,35 @@ export class SettingsService {
     await this.write(next);
     return next;
   }
+
+  async updateUpdates(input: AppUpdateSettingsInput): Promise<AppSettings> {
+    const current = await this.read();
+    const next: AppSettings = {
+      ...current,
+      updates: normalizeUpdateSettings({
+        ...current.updates,
+        ...input,
+      }),
+    };
+    await this.write(next);
+    return next;
+  }
 }
 
 function normalizeQuickPreviewDuration(value: unknown): number {
   const duration = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_SETTINGS.quickPreviewMaxDurationMs;
   return Math.max(300, Math.min(15000, Math.round(duration)));
+}
+
+function normalizeUpdateSettings(value: unknown): UpdateSettings {
+  const input = isRecord(value) ? value : {};
+  return {
+    checkOnStartup: input.checkOnStartup === true,
+    autoDownload: input.autoDownload === true,
+    linuxAppImageOnly: true,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

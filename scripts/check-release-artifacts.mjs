@@ -73,22 +73,38 @@ function assertNodeEngine(packageJson) {
   }
 }
 
-function assertZipFirstBuildMetadata(packageJson) {
+function targetNames(targets) {
+  return targets.map((target) => String(target).toLowerCase());
+}
+
+function assertReleaseBuildMetadata(packageJson) {
   const winTargets = Array.isArray(packageJson.build?.win?.target)
     ? packageJson.build.win.target
     : [packageJson.build?.win?.target].filter(Boolean);
   const linuxTargets = Array.isArray(packageJson.build?.linux?.target)
     ? packageJson.build.linux.target
     : [packageJson.build?.linux?.target].filter(Boolean);
-  if (!winTargets.includes("dir")) {
+  const normalizedWinTargets = targetNames(winTargets);
+  const normalizedLinuxTargets = targetNames(linuxTargets);
+  const allowedWinTargets = new Set(["dir"]);
+  const allowedLinuxTargets = new Set(["dir", "appimage", "tar.gz", "deb", "rpm"]);
+
+  if (!normalizedWinTargets.includes("dir")) {
     throw new Error("package.json build.win.target must include dir for zip-first Windows packaging");
   }
-  if (!linuxTargets.includes("dir")) {
-    throw new Error("package.json build.linux.target must include dir for zip-first Linux packaging");
+  for (const target of ["dir", "appimage", "tar.gz"]) {
+    if (!normalizedLinuxTargets.includes(target)) {
+      throw new Error(`package.json build.linux.target must include ${target} for Linux release packaging`);
+    }
   }
-  for (const target of [...winTargets, ...linuxTargets]) {
-    if (["nsis", "msi", "appx", "appimage", "deb", "rpm", "snap", "flatpak"].includes(String(target).toLowerCase())) {
-      throw new Error(`Installer/package target is outside the zip-first release scope: ${target}`);
+  for (const target of normalizedWinTargets) {
+    if (!allowedWinTargets.has(target)) {
+      throw new Error(`Windows installer/package target is outside the zip release scope: ${target}`);
+    }
+  }
+  for (const target of normalizedLinuxTargets) {
+    if (!allowedLinuxTargets.has(target)) {
+      throw new Error(`Linux package target is outside the approved release scope: ${target}`);
     }
   }
 }
@@ -155,7 +171,7 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     throw new Error(`Unexpected license: ${packageJson.license}`);
   }
   assertNodeEngine(packageJson);
-  assertZipFirstBuildMetadata(packageJson);
+  assertReleaseBuildMetadata(packageJson);
 
   const requiredFiles = [
     ["README.md", "README"],

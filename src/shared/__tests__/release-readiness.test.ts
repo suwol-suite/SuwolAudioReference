@@ -62,7 +62,7 @@ describe("release readiness docs and checks", () => {
           target: ["dir"],
         },
         linux: {
-          target: ["dir"],
+          target: ["dir", "AppImage", "tar.gz"],
         },
       },
     };

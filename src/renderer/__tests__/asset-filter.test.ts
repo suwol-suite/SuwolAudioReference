@@ -87,6 +87,11 @@ describe("asset-filter", () => {
       quickPreviewMaxDurationMs: 3000,
       quickPreviewAutoPlayShortSounds: true,
       stopPreviousOnSelectionChange: true,
+      updates: {
+        checkOnStartup: false,
+        autoDownload: false,
+        linuxAppImageOnly: true as const,
+      },
     };
 
     expect(isQuickPreviewEligible(createAsset({ id: "a", fileName: "ui.wav", tagName: "UI", classificationType: "ui_sound", durationMs: 4000 }), settings)).toBe(true);

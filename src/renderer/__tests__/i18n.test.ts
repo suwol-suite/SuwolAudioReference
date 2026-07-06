@@ -94,4 +94,13 @@ describe("i18n", () => {
     expect(translateError("en", "SIMILARITY_SEARCH_FAILED")).toContain("Similarity");
     expect(translateError("ko", "FEATURE_RERUN_FAILED")).toContain("Feature");
   });
+
+  it("contains Linux AppImage update labels in both locales", () => {
+    expect(translate("en", "updates.check")).toBe("Check for Updates");
+    expect(translate("ko", "updates.check")).toContain("업데이트");
+    expect(translate("en", "updates.windowsManual")).toContain("manual");
+    expect(translate("ko", "updates.linuxTarManual")).toContain("AppImage");
+    expect(translateError("en", "UPDATE_CHECK_FAILED")).toContain("Update");
+    expect(translateError("ko", "UPDATE_DOWNLOAD_FAILED")).toContain("업데이트");
+  });
 });

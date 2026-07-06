@@ -20,6 +20,7 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "check:release": "node scripts/check-release-artifacts.mjs",
+    "check:linux-updater": "node scripts/check-linux-updater-artifacts.mjs",
     "checksums": "node scripts/generate-checksums.mjs",
     "zip:win": "node scripts/zip-release.mjs win",
     "zip:linux": "node scripts/zip-release.mjs linux",
@@ -35,9 +36,11 @@
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --win",
     "dist:win:dir": "npm run build && electron-builder --win dir",
-    "dist:linux:dir": "npm run build && electron-builder --linux dir"
+    "dist:linux:dir": "npm run build && electron-builder --linux dir",
+    "dist:linux:release": "npm run build && electron-builder --linux AppImage tar.gz --publish never"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -55,6 +58,15 @@
   "build": {
     "appId": "work.suwol.audio-reference",
     "productName": "Suwol Audio Reference",
+    "electronDist": "node_modules/electron/dist",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "suwol-suite",
+        "repo": "SuwolAudioReference",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "release"
     },
@@ -78,9 +90,11 @@
     "linux": {
       "icon": "build/icon.png",
       "target": [
-        "dir"
+        "dir",
+        "AppImage",
+        "tar.gz"
       ],
-      "category": "Audio"
+      "category": "AudioVideo"
     }
   }
 }

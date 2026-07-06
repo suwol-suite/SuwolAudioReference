@@ -53,12 +53,13 @@ This repository is preparing a Windows MVP release. The current build includes:
 - WAV PCM analysis uses a local parser for supported PCM/float WAV files; unsupported codecs keep the existing metadata-only fallback.
 - Settings tabs for general, playback, library management, shortcuts, and about.
 - Windows packaging metadata and generated application icons.
-- GitHub Actions workflow for Windows/Linux zip artifacts and tag-based GitHub Releases.
+- GitHub Actions workflow for Windows/Linux zip artifacts, tag-based Linux AppImage/tar.gz assets, signed checksum files, Linux AppImage update metadata, and GitHub Releases.
 
 ## Supported Platform
 
 - Primary target: Windows 10/11 x64.
-- Secondary CI package target: Linux x64 zip.
+- Secondary CI package target: Linux x64 zip; tag releases also publish Linux AppImage and tar.gz assets.
+- Auto-update target: packaged Linux AppImage builds only, using GitHub Releases metadata.
 - Development target: Node.js 24+ and npm 10+ on Windows PowerShell.
 - macOS builds are not release targets for this MVP.
 
@@ -74,7 +75,9 @@ Version 0.1.2 is the Game Project, Sound Usage Board, Project Sound Pack, Export
 - Export Project Sound Pack, Project Manifest, Project Missing Report, and Project Codex Instruction outputs.
 - Review project export presets and local export history.
 - Use Sound Work TODO queues, candidate review notes/scores, Project Sound Style Guide, Project Checklist, and Sound Request exports.
-- Distribute Windows and Linux zip artifacts only.
+- Distribute Windows zip plus Linux zip/AppImage/tar.gz artifacts.
+- Support automatic updates only for packaged Linux AppImage builds.
+- Keep Windows zip and Linux tar.gz updates as manual GitHub Releases downloads.
 
 The release stays local-first: no AI/cloud calls, no Codex/OpenAI API calls, no bundled ffmpeg, no GPL runtime dependency added by the app, no audio editing/conversion, and no direct mutation of Unity, Unreal, MonoGame, or other engine project files.
 
@@ -242,16 +245,18 @@ Phase 7 release-readiness notes:
 - The app requests a single-instance lock. A second launch should focus or restore the existing window instead of keeping a duplicate main window open.
 - Manual QA is documented in `docs/manual-qa.md`.
 - Windows unsigned distribution guidance is documented in `docs/windows-distribution.md`.
-- Linux zip distribution guidance is documented in `docs/linux-distribution.md`.
+- Linux distribution guidance is documented in `docs/linux-distribution.md`.
 - Release notes and known issues are documented in `docs/release-notes-0.1.2.md` and `docs/known-issues.md`.
 - `check:release` validates the expected zip artifact, unpacked executable, release docs, notices, icons, and package metadata.
 
 GitHub release workflow notes:
 
 - Main branch pushes and pull requests build Windows and Linux zip artifacts.
-- `v*` tag pushes create a GitHub Release and upload the Windows/Linux zip artifacts.
-- The automated release workflow uploads zip files only. It does not publish installers, AppImage, deb, rpm, or signed packages.
-- No GitHub secrets, OpenAI/Codex/API keys, code-signing certificates, or cloud service credentials are required.
+- `v*` tag pushes create a GitHub Release and upload the Windows/Linux zip artifacts, Linux AppImage/tar.gz assets, signed Linux checksum file, signature, and public release key.
+- Linux AppImage tag releases also upload `latest-linux.yml` and blockmap files required by electron-updater.
+- The automated release workflow does not publish Windows installers, auto-updaters, Snap, Flatpak, or code-signed app binaries. Linux deb/rpm assets are uploaded only if the existing electron-builder Linux configuration creates them.
+- The app update UI is Linux AppImage-only. Windows zip and Linux tar.gz builds show manual download guidance and never call the updater.
+- Tag release checksum signing requires the `GPG_PRIVATE_KEY_B64` and `GPG_PASSPHRASE` GitHub secrets. No OpenAI/Codex/API keys, code-signing certificates, or cloud service credentials are required.
 
 Phase 8 sound usage board notes:
 
@@ -368,12 +373,13 @@ npm.cmd run zip:win
 npm.cmd run check:release -- --platform win
 ```
 
-Create a Linux zip in GitHub Actions or on Linux:
+Create Linux release outputs in GitHub Actions or on Linux:
 
 ```bash
 npm run dist:linux:dir
 npm run zip:linux
 npm run check:release -- --platform linux
+npm run dist:linux:release
 ```
 
 Validate current-platform release outputs:
@@ -388,7 +394,7 @@ Release outputs are written to `release/`, which is intentionally ignored by git
 
 The public release path is GitHub Releases on `suwol-suite/SuwolAudioReference`.
 
-Main branch pushes and pull requests create downloadable workflow artifacts. A version tag creates a GitHub Release and uploads the Windows/Linux zip files. The existing `v0.1.1` tag belongs to the earlier GitHub Release and should not be moved or regenerated.
+Main branch pushes and pull requests create downloadable workflow artifacts. A version tag creates a GitHub Release and uploads the Windows/Linux zip files plus the Linux AppImage/tar.gz assets, `latest-linux.yml`, blockmap files, signed checksum file, signature, and public release key. The existing `v0.1.1` tag belongs to the earlier GitHub Release and should not be moved or regenerated.
 
 For the current release candidate:
 
@@ -401,6 +407,20 @@ The release tag must match `package.json` exactly. For example, `package.json` v
 
 For the next release, update `package.json` version, add a matching `docs/release-notes-X.Y.Z.md`, verify the release checks, then tag as `vX.Y.Z`.
 
+Linux AppImage/tar.gz checksum verification on Linux/macOS:
+
+1. Download the Linux AppImage or tar.gz artifact, `checksums.txt`, `checksums.txt.asc`, and `suwol-release-public-key.asc` from the official release assets.
+2. Put the files in the same folder.
+3. Import the public release key, verify the signed checksum file, then verify the downloaded artifact hashes:
+
+```bash
+gpg --import suwol-release-public-key.asc
+gpg --verify checksums.txt.asc checksums.txt
+shasum -a 256 -c checksums.txt
+```
+
+The GPG step verifies the checksum file signature. The `shasum` step verifies that the downloaded Linux AppImage/tar.gz assets match the published SHA-256 hashes. The existing Windows/Linux zip artifacts are also listed in `SHA256SUMS.txt`.
+
 Windows users:
 
 1. Download `Suwol.Audio.Reference.0.1.2.Windows.x64.zip`.
@@ -409,16 +429,29 @@ Windows users:
 
 Linux users:
 
-1. Download `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`.
-2. Extract it to a writable folder.
-3. If needed, set executable permission:
+1. Download the Linux AppImage, tar.gz, or `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`.
+2. Verify the signed `checksums.txt` file for AppImage/tar.gz assets. Use `SHA256SUMS.txt` for zip-only verification.
+3. For AppImage, set executable permission and run it. For tar.gz or zip, extract it to a writable folder first.
+4. If needed, set executable permission:
 
 ```bash
+chmod +x ./Suwol*.AppImage
+./Suwol*.AppImage
+
+# Or, after extracting the tar.gz/zip:
 chmod +x "suwol-audio-reference"
 ./suwol-audio-reference
 ```
 
 The exact Linux executable name is verified by the release artifact checker and may follow electron-builder naming.
+
+Linux AppImage automatic updates:
+
+- Available only when the packaged app is running from a Linux AppImage.
+- Disabled in development mode, Windows zip builds, Linux tar.gz builds, and any non-AppImage package.
+- The Settings Updates tab lets users check manually, download after a result is available, and restart to install after the download completes.
+- The default settings do not check on startup and do not download automatically.
+- If updates are not detected, confirm the GitHub Release includes the AppImage, `latest-linux.yml`, and any generated `.blockmap` files.
 
 ## Windows Distribution Notes
 

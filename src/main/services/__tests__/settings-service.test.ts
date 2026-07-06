@@ -16,7 +16,14 @@ describe("settings-service", () => {
     await mkdir(directory, { recursive: true });
     const service = new SettingsService(join(directory, "settings.json"));
 
-    expect((await service.read()).locale).toBe("en");
+    expect(await service.read()).toMatchObject({
+      locale: "en",
+      updates: {
+        checkOnStartup: false,
+        autoDownload: false,
+        linuxAppImageOnly: true,
+      },
+    });
     await service.setLocale("ko");
     expect((await service.read()).locale).toBe("ko");
   });
@@ -41,5 +48,24 @@ describe("settings-service", () => {
       stopPreviousOnSelectionChange: false,
     });
     expect(await service.read()).toMatchObject(updated);
+  });
+
+  it("persists update settings while keeping Linux AppImage policy locked", async () => {
+    const { SettingsService } = await import("../settings-service");
+    const directory = join(tmpdir(), `suwol-audio-settings-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    const service = new SettingsService(join(directory, "settings.json"));
+
+    const updated = await service.updateUpdates({
+      checkOnStartup: true,
+      autoDownload: true,
+    });
+
+    expect(updated.updates).toEqual({
+      checkOnStartup: true,
+      autoDownload: true,
+      linuxAppImageOnly: true,
+    });
+    expect((await service.read()).updates).toEqual(updated.updates);
   });
 });

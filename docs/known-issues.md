@@ -5,7 +5,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 ## Unsigned Windows App Warning
 
 - Symptom: Windows SmartScreen, Microsoft Defender, or browsers may show an unknown publisher warning.
-- Impact: Testers may need extra confidence before running the Windows or Linux zip build.
+- Impact: Testers may need extra confidence before running the Windows zip or Linux release artifact.
 - Temporary handling: Publish hashes, release notes, license, third-party notices, and artifact source information. Ask testers to verify the source and hash before running.
 - Future plan: Evaluate OV or EV code signing in a later release phase.
 
@@ -30,12 +30,19 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Temporary handling: Use diagnostics and the Unplayable smart folder to find these files.
 - Future plan: Consider clearer codec reporting without adding conversion or ffmpeg features.
 
-## Zip-First Distribution Only
+## Portable Distribution Without Installers
 
-- Symptom: 0.1.2 publishes Windows and Linux zip files instead of installers or native Linux packages.
-- Impact: Users must extract the zip and run the executable from the extracted folder. Windows users may see unsigned-app warnings.
-- Temporary handling: Publish release notes, hashes, source information, and distribution guides next to the zip artifacts.
-- Future plan: Evaluate installers or signed distribution only after the MVP zip workflow is stable.
+- Symptom: 0.1.2 publishes a Windows zip and Linux zip/AppImage/tar.gz artifacts instead of installers or app-store style packages.
+- Impact: Windows users must extract the zip and run the executable from the extracted folder. Linux users may need to set executable permission before running AppImage or extracted builds.
+- Temporary handling: Publish release notes, hashes, signed Linux checksum files, source information, and distribution guides next to the release artifacts.
+- Future plan: Evaluate installers, native packages, or code-signed app binaries only after the MVP release workflow is stable.
+
+## Linux AppImage Auto Update Scope
+
+- Symptom: Automatic update checks are available only for packaged Linux AppImage builds.
+- Impact: Windows zip, Linux tar.gz, Linux zip, development mode, draft releases, and releases missing `latest-linux.yml` will not auto-update.
+- Temporary handling: Use the Settings Updates tab to open GitHub Releases and download manually when auto update is unsupported or metadata is missing.
+- Future plan: Keep Windows signing/store strategy, Snap, Flatpak, app stores, and broader update channels in later phases.
 
 ## Engine Project Files Are Not Modified
 

@@ -28,15 +28,17 @@ All analysis, similarity, validation, and export work stays local. The app does 
 - Sound Request Markdown, CSV, and JSON export.
 - Project Style Guide and Project Checklist Markdown export.
 - Korean and English localization.
-- Windows and Linux zip-first distribution.
+- Windows zip-first distribution with Linux zip, AppImage, and tar.gz release assets.
 
 ## Distribution
 
 - Windows x64 zip: `Suwol.Audio.Reference.0.1.2.Windows.x64.zip`.
 - Linux x64 zip: `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`.
+- Linux AppImage and tar.gz assets are generated on tag release builds.
 - `SHA256SUMS.txt` is generated for release zip verification.
+- `checksums.txt` and `checksums.txt.asc` are generated for signed Linux asset verification and are published with `suwol-release-public-key.asc`.
 - Windows builds are unsigned.
-- Distribution is zip-first. There is no installer as the primary release artifact.
+- Distribution remains portable. There is no installer as the primary release artifact.
 
 ## Verification
 
@@ -81,7 +83,16 @@ npm run zip:linux
 npm run check:release -- --platform linux
 ```
 
-The tag release job downloads the Windows and Linux zip artifacts, generates `SHA256SUMS.txt`, and uploads the two zip files plus the checksum file to GitHub Releases.
+Tag release Linux assets are generated and verified with:
+
+```bash
+npm run dist:linux:release
+gpg --import suwol-release-public-key.asc
+gpg --verify checksums.txt.asc checksums.txt
+sha256sum -c checksums.txt
+```
+
+The tag release job downloads the Windows and Linux zip artifacts, generates `SHA256SUMS.txt`, signs the Linux asset checksum file, verifies it with the public key, and uploads the zip files, Linux AppImage/tar.gz assets, checksum files, signature, and public key to GitHub Releases.
 
 ## Known Limitations
 
@@ -95,7 +106,7 @@ The tag release job downloads the Windows and Linux zip artifacts, generates `SH
 - License and credit fields are user-managed metadata and are not legal verification.
 - Style guide, checklist, workflow notes, candidate review notes, and decision notes are user-authored data and are not auto-translated.
 - Playback support can vary by OS and Chromium codec support.
-- Linux zip validation is expected to run in GitHub Actions or on a Linux machine.
+- Linux zip/AppImage/tar.gz validation is expected to run in GitHub Actions or on a Linux machine.
 
 ## Release Handling
 

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { SuwolAudioApi } from "../shared/ipc-types";
+import type { UpdateState } from "../shared/update-types";
 
 const api: SuwolAudioApi = {
   library: {
@@ -208,6 +209,21 @@ const api: SuwolAudioApi = {
     get: () => ipcRenderer.invoke("settings:get"),
     setLocale: (locale) => ipcRenderer.invoke("settings:setLocale", locale),
     updateQuickPreview: (input) => ipcRenderer.invoke("settings:updateQuickPreview", input),
+    updateUpdates: (input) => ipcRenderer.invoke("settings:updateUpdates", input),
+  },
+  updates: {
+    getState: () => ipcRenderer.invoke("updates:getState"),
+    check: () => ipcRenderer.invoke("updates:check"),
+    download: () => ipcRenderer.invoke("updates:download"),
+    install: () => ipcRenderer.invoke("updates:install"),
+    openReleasePage: () => ipcRenderer.invoke("updates:openReleasePage"),
+    onStateChanged: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: UpdateState) => {
+        callback(state);
+      };
+      ipcRenderer.on("updates:stateChanged", listener);
+      return () => ipcRenderer.removeListener("updates:stateChanged", listener);
+    },
   },
   diagnostics: {
     runLibraryDiagnostics: () => ipcRenderer.invoke("diagnostics:runLibrary"),

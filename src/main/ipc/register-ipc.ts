@@ -20,6 +20,7 @@ import type {
 } from "../../shared/export-types";
 import type { Locale } from "../../shared/i18n/locales";
 import type { QuickPreviewSettingsInput } from "../../shared/settings-types";
+import type { LinuxUpdateService } from "../services/linux-update-service";
 import type { ProjectSoundPackOptions } from "../../shared/project-sound-pack-types";
 import type {
   GameProjectInput,
@@ -64,7 +65,12 @@ export function registerIpcHandlers(
   services: AppServices,
   getWindow: () => BrowserWindow | null,
   onLocaleChanged: () => Promise<void>,
+  updateService?: LinuxUpdateService,
 ): void {
+  updateService?.onStateChanged((state) => {
+    getWindow()?.webContents.send("updates:stateChanged", state);
+  });
+
   ipcMain.handle("library:create", async (_event, options?: { rootPath?: string; name?: string }) => {
     const rootPath = options?.rootPath ?? (await pickDirectory(services, getWindow(), true));
     if (!rootPath) {
@@ -227,6 +233,16 @@ export function registerIpcHandlers(
   ipcMain.handle("settings:updateQuickPreview", (_event, input: QuickPreviewSettingsInput) =>
     services.settingsService.updateQuickPreview(input),
   );
+  ipcMain.handle("settings:updateUpdates", (_event, input) => services.settingsService.updateUpdates(input));
+
+  ipcMain.handle("updates:getState", () => updateService?.getState());
+  ipcMain.handle("updates:check", async () => {
+    const settings = await services.settingsService.read();
+    return updateService?.checkForUpdates({ autoDownload: settings.updates.autoDownload });
+  });
+  ipcMain.handle("updates:download", () => updateService?.downloadUpdate());
+  ipcMain.handle("updates:install", () => updateService?.installUpdate());
+  ipcMain.handle("updates:openReleasePage", () => updateService?.openReleasePage());
 
   ipcMain.handle("diagnostics:runLibrary", () => services.diagnosticsService.runLibraryDiagnostics());
   ipcMain.handle("diagnostics:openLogFolder", async () => {

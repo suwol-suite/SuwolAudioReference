@@ -17,8 +17,10 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd run zip:win` passes after the Windows unpacked build is created.
 - `npm.cmd run check:release -- --platform win` passes after the Windows zip is created.
 - `npm.cmd run checksums` and `npm.cmd run check:release -- --platform win --require-checksums` pass when publishing checksum files.
-- The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, and `npm run check:release -- --platform linux`.
-- `package.json` version is `0.1.2`, `engines.node` is Node 24+, license is `Apache-2.0`, and packaging remains zip-first.
+- The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, `npm run check:release -- --platform linux`, and tag-only Linux AppImage/tar.gz packaging.
+- The GitHub Actions Linux tag job passes `npm run check:linux-updater -- dist --require-signature` and uploads the AppImage, `latest-linux.yml`, blockmap files, `checksums.txt`, and `checksums.txt.asc`.
+- `package.json` version is `0.1.2`, `engines.node` is Node 24+, license is `Apache-2.0`, Windows packaging remains zip-first, and Linux release packaging includes AppImage/tar.gz.
+- Update settings default to `checkOnStartup=false`, `autoDownload=false`, and Linux AppImage-only policy.
 
 ## Fixture Set
 
@@ -367,4 +369,6 @@ Do not commit generated fixture audio.
 - Close and reopen the packaged app.
 - Confirm the same library can be reopened and browsed.
 - Extract `release\Suwol.Audio.Reference.0.1.2.Windows.x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
-- Download the GitHub Actions Linux artifact or GitHub Release Linux zip, extract it on Linux, set executable permission if needed, and run the packaged executable.
+- Download the GitHub Actions Linux artifact or GitHub Release Linux AppImage/zip/tar.gz, verify signed checksums when available, set executable permission if needed, and run the packaged executable.
+- On Linux AppImage, confirm Settings Updates shows automatic update support and manual check/download/install controls.
+- On Windows zip and Linux tar.gz/zip, confirm Settings Updates shows manual GitHub Releases guidance and does not start an updater check.

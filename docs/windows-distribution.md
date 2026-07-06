@@ -29,7 +29,9 @@ npm.cmd run check:release -- --platform win
 
 Users download the Windows zip from GitHub Releases, extract it to a writable folder, and run `Suwol Audio Reference.exe` from the extracted `win-unpacked` folder.
 
-An installer is not the primary 0.1.2 release artifact. The GitHub Actions release workflow uploads zip files only.
+An installer is not the primary 0.1.2 Windows release artifact. The GitHub Actions release workflow uploads the Windows/Linux zip files, publishes Linux AppImage/tar.gz assets with signed checksum files, includes Linux updater metadata, and keeps zip hashes in `SHA256SUMS.txt`.
+
+Windows zip builds do not use automatic updates. The Settings Updates tab shows manual GitHub Releases guidance on Windows, and the app does not call `electron-updater` outside packaged Linux AppImage builds.
 
 Recommended user-facing steps:
 
@@ -46,7 +48,7 @@ The current 0.1.2 build is not code signed. Windows SmartScreen, Microsoft Defen
 Do not tell users to ignore security warnings blindly. Instead:
 
 - Publish artifacts only from a trusted project-controlled location.
-- Publish SHA-256 hashes next to the Windows and Linux zip artifacts.
+- Publish SHA-256 hashes next to the Windows zip and Linux release artifacts.
 - Publish release notes and known issues next to the artifacts.
 - Keep source, license, and third-party notices available for review.
 - Ask testers to confirm the file name, source, and hash before running the app.
@@ -68,7 +70,9 @@ Keep a release folder outside the repository with:
 
 - `Suwol.Audio.Reference.0.1.2.Windows.x64.zip`
 - `Suwol.Audio.Reference.0.1.2.Linux.x64.zip`
-- SHA-256 hash text file
+- Linux AppImage and tar.gz assets from the GitHub Release, when testing Linux distribution
+- `SHA256SUMS.txt`
+- `checksums.txt`, `checksums.txt.asc`, and `suwol-release-public-key.asc`
 - `docs/release-notes-0.1.2.md`
 - `docs/known-issues.md`
 - `docs/windows-distribution.md`

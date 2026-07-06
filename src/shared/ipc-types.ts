@@ -53,7 +53,8 @@ import type {
   ProjectExportSourceSummary,
 } from "./export-types";
 import type { Locale } from "./i18n/locales";
-import type { AppSettings, QuickPreviewSettingsInput } from "./settings-types";
+import type { AppSettings, AppUpdateSettingsInput, QuickPreviewSettingsInput } from "./settings-types";
+import type { UpdateState } from "./update-types";
 import type {
   ProjectSoundPackDryRun,
   ProjectSoundPackExportResult,
@@ -334,6 +335,15 @@ export interface SuwolAudioApi {
     get: () => Promise<AppSettings>;
     setLocale: (locale: Locale) => Promise<AppSettings>;
     updateQuickPreview: (input: QuickPreviewSettingsInput) => Promise<AppSettings>;
+    updateUpdates: (input: AppUpdateSettingsInput) => Promise<AppSettings>;
+  };
+  updates: {
+    getState: () => Promise<UpdateState>;
+    check: () => Promise<UpdateState>;
+    download: () => Promise<UpdateState>;
+    install: () => Promise<UpdateState>;
+    openReleasePage: () => Promise<UpdateState>;
+    onStateChanged: (callback: (state: UpdateState) => void) => () => void;
   };
   diagnostics: {
     runLibraryDiagnostics: () => Promise<LibraryDiagnostics | null>;

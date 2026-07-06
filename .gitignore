@@ -16,3 +16,11 @@ samples/output/
 fixtures/output/
 .DS_Store
 Thumbs.db
+
+# Release signing secrets
+suwol-release-private-key.asc
+suwol-release-revocation.asc
+*.private.asc
+*.revocation.asc
+*private-key*.asc
+*revocation*.asc

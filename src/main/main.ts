@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { APP_ID, APP_NAME } from "../shared/app-metadata";
@@ -6,6 +6,7 @@ import { refreshApplicationMenu } from "./i18n/main-i18n";
 import { createAppServices } from "./services/app-services";
 import { registerProcessErrorHandlers, registerWindowErrorLogging } from "./services/error-service";
 import { registerIpcHandlers } from "./ipc/register-ipc";
+import { createLinuxUpdateService } from "./services/linux-update-service";
 import { registerSingleInstanceLock } from "./single-instance-lock";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,8 +19,16 @@ const hasSingleInstanceLock = registerSingleInstanceLock(app, () => mainWindow);
 
 if (hasSingleInstanceLock) {
   const services = createAppServices(app.getPath("userData"));
+  const updateService = createLinuxUpdateService({
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    appImagePath: process.env.APPIMAGE,
+    currentVersion: app.getVersion(),
+    logger: services.loggerService,
+    openReleasePage: (url) => shell.openExternal(url),
+  });
   registerProcessErrorHandlers(services.loggerService);
-  registerIpcHandlers(services, () => mainWindow, () => refreshApplicationMenu(services.settingsService));
+  registerIpcHandlers(services, () => mainWindow, () => refreshApplicationMenu(services.settingsService), updateService);
 
   async function createWindow(): Promise<void> {
     mainWindow = new BrowserWindow({
@@ -60,6 +69,10 @@ if (hasSingleInstanceLock) {
     });
     await refreshApplicationMenu(services.settingsService);
     await createWindow();
+    void services.settingsService
+      .read()
+      .then((settings) => updateService.checkOnStartup(settings.updates))
+      .catch((error: unknown) => services.loggerService.warn(`[updates] startup check skipped: ${String(error)}`));
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
