@@ -132,7 +132,7 @@ describe("release readiness docs and checks", () => {
     const appImageName = `SuwolAudioReference-${APP_VERSION}-linux-x64.AppImage`;
 
     mkdirSync(root, { recursive: true });
-    for (const relativePath of [appImageName, "checksums.txt"]) {
+    for (const relativePath of [appImageName, "checksums.txt", "checksums.txt.asc", "suwol-release-public-key.asc"]) {
       writeFileSync(join(root, relativePath), "fixture", "utf8");
     }
     writeFileSync(
@@ -155,12 +155,59 @@ describe("release readiness docs and checks", () => {
     ].join("\n");
     writeFileSync(join(root, "checksums.txt"), checksumContent, "utf8");
 
-    const output = execFileSync(process.execPath, [join(process.cwd(), "scripts", "check-linux-updater-artifacts.mjs"), root], {
-      encoding: "utf8",
-    });
+    const output = execFileSync(
+      process.execPath,
+      [join(process.cwd(), "scripts", "check-linux-updater-artifacts.mjs"), root, "--require-signature"],
+      {
+        encoding: "utf8",
+      },
+    );
 
     expect(output).toContain("linux updater artifacts ok");
     expect(output).toContain(`appimage: ${appImageName}`);
+    expect(output).toContain("AppImage sidecar blockmap not found");
+  });
+
+  it("accepts normalized Linux updater metadata reference variants", () => {
+    const appImageName = `Suwol Audio Reference-${APP_VERSION}.AppImage`;
+    const references = [
+      appImageName,
+      `./${appImageName}`,
+      encodeURIComponent(appImageName),
+      `https://github.com/suwol-suite/SuwolAudioReference/releases/download/v${APP_VERSION}/${encodeURIComponent(appImageName)}`,
+    ];
+
+    for (const reference of references) {
+      const root = join(tmpdir(), `suwol-linux-updater-reference-${crypto.randomUUID()}`);
+      mkdirSync(root, { recursive: true });
+      writeFileSync(join(root, appImageName), "fixture", "utf8");
+      writeFileSync(join(root, "suwol-release-public-key.asc"), "fixture", "utf8");
+      writeFileSync(
+        join(root, "checksums.txt"),
+        `${createHash("sha256").update("fixture").digest("hex")}  ${appImageName}\n`,
+        "utf8",
+      );
+      writeFileSync(
+        join(root, "latest-linux.yml"),
+        [
+          `version: ${APP_VERSION}`,
+          "files:",
+          `  - url: ${reference}`,
+          "    sha512: fixture-sha512",
+          "    size: 7",
+          `path: ${reference}`,
+          "sha512: fixture-sha512",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const output = execFileSync(process.execPath, [join(process.cwd(), "scripts", "check-linux-updater-artifacts.mjs"), root], {
+        encoding: "utf8",
+      });
+
+      expect(output).toContain("linux updater artifacts ok");
+      expect(output).toContain(`appimage: ${appImageName}`);
+    }
   });
 
   it("documents the 0.1.4 unified release workflow scope", () => {

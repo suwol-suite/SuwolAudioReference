@@ -40,6 +40,9 @@ async function main() {
 
   for (const fileName of files) {
     assertSafeAssetName(fileName);
+    if (fileName.endsWith(".blockmap")) {
+      await assertNonEmpty(join(targetDirectory, fileName), fileName);
+    }
   }
 
   if (files.includes(names.linuxLatest)) {

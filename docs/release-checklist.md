@@ -60,7 +60,9 @@ npm run zip:linux
 npm run check:release -- --platform linux
 npm run dist:linux:release
 npm run normalize:linux-appimage
-npm run check:linux-updater
+npm run checksums -- release
+# GitHub Actions signs checksums.txt here.
+npm run check:linux-updater -- release --require-signature
 ```
 
 ## Manual QA

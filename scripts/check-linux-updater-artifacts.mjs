@@ -7,7 +7,6 @@ const args = process.argv.slice(2);
 const explicitDirectory = args.find((arg) => !arg.startsWith("--"));
 const targetDirectory = resolve(explicitDirectory ?? join(root, "release"));
 const requireSignature = args.includes("--require-signature");
-const requireChecksums = args.includes("--require-checksums") || requireSignature;
 
 async function main() {
   if (!(await exists(targetDirectory))) {
@@ -39,7 +38,7 @@ async function main() {
     await assertFile(blockmap, "Linux AppImage blockmap");
     console.log(`blockmap: ${blockmap}`);
   } else {
-    console.log(`blockmap: embedded or not generated (${blockmap} not present)`);
+    console.log("AppImage sidecar blockmap not found; treating embedded/not-generated blockmap as acceptable.");
   }
 
   const latestLinuxContent = await readFile(join(targetDirectory, latestLinux), "utf8");
@@ -58,12 +57,11 @@ async function main() {
     throw new Error(`latest-linux.yml version ${latestVersion} does not match package.json ${packageJson.version}`);
   }
 
-  if (requireChecksums) {
-    await assertFile(names.checksums, "checksums.txt");
-    const checksumContent = await readFile(join(targetDirectory, names.checksums), "utf8");
-    if (!checksumContent.split(/\r?\n/).some((line) => line.endsWith(`  ${appImage}`))) {
-      throw new Error(`checksums.txt does not contain ${appImage}`);
-    }
+  await assertFile(names.checksums, "checksums.txt");
+  await assertFile(names.publicKey, names.publicKey);
+  const checksumContent = await readFile(join(targetDirectory, names.checksums), "utf8");
+  if (!checksumContent.split(/\r?\n/).some((line) => line.endsWith(`  ${appImage}`))) {
+    throw new Error(`checksums.txt does not contain ${appImage}`);
   }
   if (requireSignature) {
     await assertFile(names.checksumsSignature, "checksums.txt.asc");

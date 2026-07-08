@@ -18,10 +18,14 @@ npm run zip:linux
 npm run check:release -- --platform linux
 npm run dist:linux:release
 npm run normalize:linux-appimage
-npm run check:linux-updater
+npm run checksums -- release
+# GitHub Actions signs checksums.txt here.
+npm run check:linux-updater -- release --require-signature
 ```
 
 Local Windows development should not try to force a Linux build. Let the GitHub Actions Linux job create and verify the Linux artifact.
+
+On tag/manual release runs, GitHub Actions copies `suwol-release-public-key.asc` into `release/`, signs `checksums.txt`, verifies the signature, then runs the Linux updater artifact check with `--require-signature`.
 
 ## Running The Release Build
 

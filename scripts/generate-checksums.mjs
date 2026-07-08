@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile, stat, writeFile } from "node:fs/promises";
+import { access, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { releaseAssetNames, releaseNames, PRODUCT_NAME } from "./release-names.mjs";
 
@@ -37,6 +37,11 @@ for (const fileName of releaseAssetNames(version)) {
     throw new Error(`Required release asset is missing for checksums: ${fileName}`);
   }
 }
+for (const fileName of await optionalChecksumAssetNames()) {
+  if (!entries.some((entry) => entry.fileName === fileName)) {
+    entries.push({ fileName, path: join(targetDirectory, fileName) });
+  }
+}
 
 if (entries.length === 0) {
   throw new Error(`No ${PRODUCT_NAME} ${version} release assets found in ${targetDirectory}`);
@@ -60,4 +65,9 @@ console.log(`checksums created: ${checksumPath}`);
 console.log(`versioned checksums created: ${versionedChecksumPath}`);
 for (const entry of entries) {
   console.log(`checksum asset: ${basename(entry.path)}`);
+}
+
+async function optionalChecksumAssetNames() {
+  const files = await readdir(targetDirectory);
+  return files.filter((fileName) => fileName.endsWith(".blockmap")).sort((left, right) => left.localeCompare(right));
 }
