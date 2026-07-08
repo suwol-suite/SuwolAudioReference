@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag, e.g. v0.1.4"
+        description: "Release tag, e.g. v0.1.5"
         required: true
         type: string
 
@@ -436,7 +436,7 @@ jobs:
           case "$RELEASE_TAG" in
             v*) ;;
             *)
-              echo "release_tag must be a version tag like v0.1.4"
+              echo "release_tag must be a version tag like v0.1.5"
               exit 1
               ;;
           esac

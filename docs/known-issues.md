@@ -1,6 +1,6 @@
 # Known Issues
 
-This document lists known limitations and release notes for Suwol Audio Reference 0.1.4. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
+This document lists known limitations and release notes for Suwol Audio Reference 0.1.5. These items should not block the MVP when the documented workaround is acceptable and the automated release gates pass.
 
 ## Unsigned Windows App Warning
 
@@ -32,7 +32,7 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 
 ## Portable Distribution Without Installers
 
-- Symptom: 0.1.4 publishes Windows zip, Linux zip/AppImage, and macOS arm64 DMG/zip artifacts instead of installer-centered or app-store style packages.
+- Symptom: 0.1.5 publishes Windows zip, Linux zip/AppImage, and macOS arm64 DMG/zip artifacts instead of installer-centered or app-store style packages.
 - Impact: Windows and Linux zip users must extract the zip and run the executable from the extracted folder. Linux AppImage users may need to set executable permission before running. macOS users may need normal Gatekeeper handling while the signed/notarized path is finalized in CI.
 - Temporary handling: Publish release notes, hashes, signed Linux checksum files, source information, and distribution guides next to the release artifacts.
 - Future plan: Evaluate installers, native packages, or code-signed app binaries only after the MVP release workflow is stable.
@@ -56,13 +56,13 @@ This document lists known limitations and release notes for Suwol Audio Referenc
 - Symptom: Project Manifest, Project Sound Pack, Unity, Unreal, and MonoGame exports create local handoff files but do not patch game projects directly.
 - Impact: Users must manually import or copy generated manifests/lists/audio into their engine project if desired.
 - Temporary handling: Review generated `README.md`, manifests, and content lists inside the export folder.
-- Future plan: Keep direct engine project mutation out of 0.1.4 unless a later phase explicitly scopes an integration.
+- Future plan: Keep direct engine project mutation out of 0.1.5 unless a later phase explicitly scopes an integration.
 
 ## Historical Failed Tags
 
 - Symptom: The `v0.1.2` and `v0.1.3` tags point at failed historical tag-workflow commits and are intentionally left untouched.
 - Impact: Re-running those tag workflows would use their old commits and fail again.
-- Temporary handling: Publish the corrected release as `v0.1.4` instead of moving or recreating old tags.
+- Temporary handling: Publish the corrected release as `v0.1.5` instead of moving or recreating old tags.
 - Future plan: Keep release recovery tags immutable and document failed historical tags in release notes.
 
 ## Large Library Performance Expectations
