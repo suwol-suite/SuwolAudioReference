@@ -1,6 +1,6 @@
 # Suwol Audio Reference Release Checklist
 
-This checklist is for preparing the 0.1.5 multi-platform release candidate. The MVP should remain focused on local library management, local analysis suggestions, localization, diagnostics, and packaging stability.
+This checklist is for preparing the 0.1.6 multi-platform release candidate. The MVP should remain focused on local library management, local analysis suggestions, localization, diagnostics, and packaging stability.
 
 ## Scope Lock
 
@@ -11,17 +11,17 @@ This checklist is for preparing the 0.1.5 multi-platform release candidate. The 
 ## Version And Metadata
 
 - `package.json` version is correct.
-- `package.json` version is `0.1.5` for this release candidate.
+- `package.json` version is `0.1.6` for this release candidate.
 - `package.json` `productName`, `appId`, `description`, and `license` are correct.
 - `package.json` `engines.node` requires Node 24 or newer.
 - Windows build metadata remains zip-first.
 - Linux build metadata includes `zip` and `AppImage` targets; deb/rpm/tar.gz are not release targets.
 - macOS build metadata includes signed/notarized arm64 `dmg` and `zip` targets when Apple credentials are configured.
 - GitHub publish metadata points at `suwol-suite/SuwolAudioReference` for Linux AppImage update checks.
-- Windows installers, Windows auto-update, Linux deb/rpm/tar.gz, Snap, Flatpak, and installer-centered assets are not introduced in 0.1.5.
+- Windows installers, Windows auto-update, Linux deb/rpm/tar.gz, Snap, Flatpak, and installer-centered assets are not introduced in 0.1.6.
 - Windows auto-update remains disabled. Linux zip and macOS assets remain manual-download builds.
 - `README.md` reflects the supported platform, formats, library layout, and backup method.
-- `docs/manual-qa.md`, `docs/release-notes-0.1.5.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
+- `docs/manual-qa.md`, `docs/release-notes-0.1.6.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
 - Generated icons exist under `assets/brand/` and `build/`: Windows uses `build/icon.ico`, Linux uses `build/icon.png`, and macOS uses `build/icon.icns`.
@@ -95,7 +95,7 @@ npm run check:linux-updater -- release --require-signature
 - Linux AppImage and Linux zip assets are present on tag/manual release builds.
 - macOS arm64 DMG/zip assets and `latest-mac.yml` are present on tag/manual release builds when Apple credentials are configured.
 - Linux AppImage updater metadata is present: `latest-linux.yml`. Sidecar `.blockmap` files are optional when electron-builder generates them.
-- `checksums.txt`, `checksums.txt.asc`, `SuwolAudioReference-0.1.5-checksums.txt`, `SuwolAudioReference-0.1.5-checksums.txt.asc`, and `suwol-release-public-key.asc` are uploaded with the release assets.
+- `checksums.txt`, `checksums.txt.asc`, `SuwolAudioReference-0.1.6-checksums.txt`, `SuwolAudioReference-0.1.6-checksums.txt.asc`, and `suwol-release-public-key.asc` are uploaded with the release assets.
 - `npm.cmd run smoke:packaged-paths` passes after `pack` and again after `dist`.
 - `npm.cmd run check:release` passes after final artifacts are produced.
 - Release artifacts do not include source-only temporary files.
@@ -122,7 +122,7 @@ Include:
 ## GitHub Release Tags
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
-- Release tags use the `vX.Y.Z` format, for example `v0.1.5`.
+- Release tags use the `vX.Y.Z` format, for example `v0.1.6`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
 - Tag pushes create a GitHub Release and upload Windows/Linux zip assets, Linux AppImage assets, macOS arm64 DMG/zip assets, update metadata, signed checksum files, and the public release key.
@@ -133,8 +133,8 @@ Include:
 Release command:
 
 ```bash
-git tag v0.1.5
-git push origin v0.1.5
+git tag v0.1.6
+git push origin v0.1.6
 ```
 
 Do not run the tag commands until the release owner has reviewed the final working tree, artifacts, checksums, manual QA notes, and GitHub Actions status.

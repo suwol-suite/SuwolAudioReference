@@ -1,10 +1,10 @@
 export const APP_NAME = "Suwol Audio Reference";
 export const APP_ID = "work.suwol.audio-reference";
-export const APP_VERSION = "0.1.5";
+export const APP_VERSION = "0.1.6";
 export const APP_DESCRIPTION_KO = "로컬 오디오 레퍼런스/에셋 관리 앱";
 export const APP_DESCRIPTION_EN = "Local audio reference and asset manager";
 export const APP_LICENSE = "Apache-2.0";
-export const APP_RELEASE_NOTES_DOC = "docs/release-notes-0.1.5.md";
+export const APP_RELEASE_NOTES_DOC = "docs/release-notes-0.1.6.md";
 export const APP_KNOWN_ISSUES_DOC = "docs/known-issues.md";
 export const APP_WINDOWS_DISTRIBUTION_DOC = "docs/windows-distribution.md";
 export const APP_LINUX_DISTRIBUTION_DOC = "docs/linux-distribution.md";

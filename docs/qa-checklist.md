@@ -8,7 +8,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd test` passes.
 - `npm.cmd audit` passes or every finding has a documented release decision.
 - `npm.cmd run check:i18n` passes.
-- `npm.cmd run check:release-tag -- --tag=v0.1.5` passes before any tag is created.
+- `npm.cmd run check:release-tag -- --tag=v0.1.6` passes before any tag is created.
 - `npm.cmd run build` passes.
 - `npm.cmd run smoke:production-entry` passes after build.
 - `npm.cmd run pack` passes.
@@ -20,7 +20,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, `npm run check:release -- --platform linux`, and tag/manual Linux AppImage packaging.
 - The GitHub Actions Linux tag/manual job signs checksums before running `npm run check:linux-updater -- release --require-signature`, then uploads the AppImage, `latest-linux.yml`, `checksums.txt`, `checksums.txt.asc`, and public release key. Sidecar blockmap upload is optional when electron-builder generates one.
 - The GitHub Actions macOS tag/manual job signs, notarizes, and uploads the arm64 DMG/zip assets when Apple secrets are configured.
-- `package.json` version is `0.1.5`, `engines.node` is Node 24+, license is `Apache-2.0`, Windows packaging remains zip-first, Linux release packaging includes zip/AppImage, and macOS release packaging includes arm64 DMG/zip.
+- `package.json` version is `0.1.6`, `engines.node` is Node 24+, license is `Apache-2.0`, Windows packaging remains zip-first, Linux release packaging includes zip/AppImage, and macOS release packaging includes arm64 DMG/zip.
 - Update settings default to `checkOnStartup=false`, `autoDownload=false`, and Linux AppImage-only policy.
 - Settings Updates shows the Release Status dashboard, current version, distribution type, expected release assets, checksum commands, and GitHub Releases actions.
 
@@ -358,7 +358,7 @@ Do not commit generated fixture audio.
 - Launch `release\win-unpacked\Suwol Audio Reference.exe`.
 - Launch the same executable a second time and confirm the existing window is focused or restored instead of leaving two main windows open.
 - Confirm the app icon and window title are correct.
-- Open Settings > About and confirm version `0.1.5`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
+- Open Settings > About and confirm version `0.1.6`, license `Apache-2.0`, release notes path, known issues path, and Windows distribution guide path.
 - Create or open a library.
 - Import the fixture set.
 - Play one imported audio file.
@@ -370,10 +370,10 @@ Do not commit generated fixture audio.
 - Open settings and run diagnostics.
 - Close and reopen the packaged app.
 - Confirm the same library can be reopened and browsed.
-- Extract `release\SuwolAudioReference-0.1.5-win-x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
+- Extract `release\SuwolAudioReference-0.1.6-win-x64.zip` to a writable folder and run the executable from the extracted `win-unpacked` folder.
 - Download the GitHub Actions Linux artifact or GitHub Release Linux AppImage/zip, verify signed checksums when available, set executable permission if needed, and run the packaged executable.
 - On Linux AppImage, confirm Settings Updates shows automatic update support and manual check/download/install controls.
-- On a 0.1.4 Linux AppImage, confirm the 0.1.5 GitHub Release can be detected as an available update when the release assets are present.
+- On a 0.1.4 Linux AppImage, confirm the 0.1.6 GitHub Release can be detected as an available update when the release assets are present.
 - On Windows zip, Linux zip, and macOS assets, confirm Settings Updates shows manual GitHub Releases guidance and does not start an updater check.
 - Confirm Settings Updates shows Windows zip, Linux zip, Linux AppImage, macOS DMG/zip, `latest-linux.yml`, `latest-mac.yml`, `checksums.txt`, `checksums.txt.asc`, versioned checksum copies, and `suwol-release-public-key.asc` as expected release assets for the current version.
 - Confirm the checksum help shows `gpg --import suwol-release-public-key.asc`, `gpg --verify checksums.txt.asc checksums.txt`, and `shasum -a 256 -c checksums.txt`.

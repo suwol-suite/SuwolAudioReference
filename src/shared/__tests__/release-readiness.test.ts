@@ -214,7 +214,7 @@ describe("release readiness docs and checks", () => {
     }
   });
 
-  it("documents the 0.1.5 unified release workflow scope", () => {
+  it("documents the 0.1.6 unified release workflow scope", () => {
     const notes = readFileSync(join(process.cwd(), APP_RELEASE_NOTES_DOC), "utf8");
 
     expect(notes).toContain("unified Windows, Linux, and macOS release workflow");
