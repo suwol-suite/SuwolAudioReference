@@ -1,5 +1,6 @@
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { releaseNames } from "./release-names.mjs";
 
 const root = process.cwd();
 const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
@@ -8,7 +9,7 @@ const version = packageJson.version;
 const unpacked = join(root, "release", "win-unpacked");
 const exe = join(unpacked, `${productName}.exe`);
 const resources = join(unpacked, "resources");
-const windowsZip = join(root, "release", `${productName} ${version} Windows x64.zip`);
+const windowsZip = join(root, "release", releaseNames(version).windowsZip);
 
 await access(exe);
 await access(resources);

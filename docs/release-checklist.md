@@ -1,6 +1,6 @@
 # Suwol Audio Reference Release Checklist
 
-This checklist is for preparing an MVP Windows release candidate. The MVP should remain focused on local library management, local analysis suggestions, localization, diagnostics, and Windows packaging stability.
+This checklist is for preparing the 0.1.4 multi-platform release candidate. The MVP should remain focused on local library management, local analysis suggestions, localization, diagnostics, and packaging stability.
 
 ## Scope Lock
 
@@ -11,16 +11,17 @@ This checklist is for preparing an MVP Windows release candidate. The MVP should
 ## Version And Metadata
 
 - `package.json` version is correct.
-- `package.json` version is `0.1.3` for this release candidate.
+- `package.json` version is `0.1.4` for this release candidate.
 - `package.json` `productName`, `appId`, `description`, and `license` are correct.
 - `package.json` `engines.node` requires Node 24 or newer.
-- Windows build metadata remains zip-first via unpacked `dir` outputs plus the repo zip script.
-- Linux build metadata includes `dir`, `AppImage`, and `tar.gz` targets; deb/rpm are included only if explicitly configured later.
+- Windows build metadata remains zip-first.
+- Linux build metadata includes `zip` and `AppImage` targets; deb/rpm/tar.gz are not release targets.
+- macOS build metadata includes signed/notarized arm64 `dmg` and `zip` targets when Apple credentials are configured.
 - GitHub publish metadata points at `suwol-suite/SuwolAudioReference` for Linux AppImage update checks.
-- Windows installers, Snap, Flatpak, code-signed app binaries, and Windows/tar.gz auto-update targets are not introduced in 0.1.3.
-- Windows auto-update remains disabled. Linux tar.gz and zip artifacts remain manual-download builds.
+- Windows installers, Windows auto-update, Linux deb/rpm/tar.gz, Snap, Flatpak, and installer-centered assets are not introduced in 0.1.4.
+- Windows auto-update remains disabled. Linux zip and macOS assets remain manual-download builds.
 - `README.md` reflects the supported platform, formats, library layout, and backup method.
-- `docs/manual-qa.md`, `docs/release-notes-0.1.3.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
+- `docs/manual-qa.md`, `docs/release-notes-0.1.4.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
 - Generated icons exist under `assets/brand/` and `build/`.
@@ -58,7 +59,8 @@ npm run dist:linux:dir
 npm run zip:linux
 npm run check:release -- --platform linux
 npm run dist:linux:release
-npm run check:linux-updater -- dist --require-signature
+npm run normalize:linux-appimage
+npm run check:linux-updater
 ```
 
 ## Manual QA
@@ -66,7 +68,8 @@ npm run check:linux-updater -- dist --require-signature
 - Complete `docs/qa-checklist.md` on the unpacked build.
 - Complete `docs/manual-qa.md` on the unpacked build.
 - Complete a short smoke pass on the extracted Windows zip.
-- Complete a short smoke pass on the Linux AppImage or extracted Linux zip/tar.gz when a Linux test machine is available.
+- Complete a short smoke pass on the Linux AppImage or extracted Linux zip when a Linux test machine is available.
+- Complete a short smoke pass on the macOS arm64 DMG or zip when a macOS test machine is available.
 - Confirm a second app launch focuses/restores the existing window and does not leave two main windows open.
 - Confirm Korean and English are both usable.
 - Confirm app launch, library create/open, import WAV/MP3/OGG, corrupted-file import, playback, analysis, similar sounds, diagnostics, backup, Export Center, trash/restore, restart, and reopen flows work in the packaged build.
@@ -87,10 +90,10 @@ npm run check:linux-updater -- dist --require-signature
 - `release\win-unpacked\resources` contains the packaged app resources.
 - The Windows zip artifact is present when `npm.cmd run zip:win` is used.
 - The Linux zip artifact is present in the GitHub Actions Linux job.
-- Linux AppImage and tar.gz assets are present on tag release builds.
-- Linux AppImage updater metadata is present: `latest-linux.yml` and generated `.blockmap` files.
-- `SHA256SUMS.txt` is generated for release zip verification.
-- `checksums.txt` and `checksums.txt.asc` are generated for Linux release asset verification, and `suwol-release-public-key.asc` is uploaded with the release assets.
+- Linux AppImage and Linux zip assets are present on tag/manual release builds.
+- macOS arm64 DMG/zip assets and `latest-mac.yml` are present on tag/manual release builds when Apple credentials are configured.
+- Linux AppImage updater metadata is present: `latest-linux.yml`. Sidecar `.blockmap` files are optional when electron-builder generates them.
+- `checksums.txt`, `checksums.txt.asc`, `SuwolAudioReference-0.1.4-checksums.txt`, `SuwolAudioReference-0.1.4-checksums.txt.asc`, and `suwol-release-public-key.asc` are uploaded with the release assets.
 - `npm.cmd run smoke:packaged-paths` passes after `pack` and again after `dist`.
 - `npm.cmd run check:release` passes after final artifacts are produced.
 - Release artifacts do not include source-only temporary files.
@@ -117,19 +120,19 @@ Include:
 ## GitHub Release Tags
 
 - Main branch pushes create Windows/Linux zip workflow artifacts.
-- Release tags use the `vX.Y.Z` format, for example `v0.1.3`.
+- Release tags use the `vX.Y.Z` format, for example `v0.1.4`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
-- Tag pushes create a GitHub Release and upload Windows/Linux zip assets, Linux AppImage/tar.gz assets, signed checksum files, and the public release key.
-- Tag pushes upload Linux AppImage updater metadata (`latest-linux.yml` and generated `.blockmap` files).
+- Tag pushes create a GitHub Release and upload Windows/Linux zip assets, Linux AppImage assets, macOS arm64 DMG/zip assets, update metadata, signed checksum files, and the public release key.
+- Tag pushes upload Linux AppImage updater metadata (`latest-linux.yml`) and macOS update metadata (`latest-mac.yml`).
 - Before creating a tag, confirm `package.json` version and the matching `docs/release-notes-X.Y.Z.md` file exist.
 - Do not tag from an unverified working tree.
 
 Release command:
 
 ```bash
-git tag v0.1.3
-git push origin v0.1.3
+git tag v0.1.4
+git push origin v0.1.4
 ```
 
 Do not run the tag commands until the release owner has reviewed the final working tree, artifacts, checksums, manual QA notes, and GitHub Actions status.

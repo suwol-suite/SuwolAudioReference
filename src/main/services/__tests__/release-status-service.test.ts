@@ -39,28 +39,37 @@ describe("release-status-service", () => {
 
   it("detects Linux non-AppImage packages as manual update builds", () => {
     expect(resolveReleaseDistribution({ platform: "linux", isPackaged: true })).toEqual({
-      distributionKind: "linux_tarball_or_zip",
+      distributionKind: "linux_zip",
       autoUpdateSupported: false,
       autoUpdateReason: "linux_manual",
     });
   });
 
   it("includes current version in expected release asset names", () => {
-    const assets = buildExpectedReleaseAssets("0.1.3", "Suwol Audio Reference");
+    const assets = buildExpectedReleaseAssets("0.1.4", "Suwol Audio Reference");
     expect(assets.map((asset) => asset.fileName)).toEqual(
       expect.arrayContaining([
-        "Suwol.Audio.Reference.0.1.3.Windows.x64.zip",
-        "Suwol.Audio.Reference.0.1.3.Linux.x64.zip",
-        "Suwol Audio Reference-0.1.3.AppImage",
-        "suwol-audio-reference-0.1.3.tar.gz",
+        "SuwolAudioReference-0.1.4-win-x64.zip",
+        "SuwolAudioReference-0.1.4-linux-x64.zip",
+        "SuwolAudioReference-0.1.4-linux-x64.AppImage",
+        "SuwolAudioReference-0.1.4-mac-arm64.dmg",
+        "SuwolAudioReference-0.1.4-mac-arm64.zip",
+        "latest-linux.yml",
+        "latest-mac.yml",
       ]),
     );
   });
 
   it("lists checksum and signature filenames", () => {
-    const assets = buildExpectedReleaseAssets("0.1.3");
+    const assets = buildExpectedReleaseAssets("0.1.4");
     expect(assets.map((asset) => asset.fileName)).toEqual(
-      expect.arrayContaining(["checksums.txt", "checksums.txt.asc", "SHA256SUMS.txt", RELEASE_PUBLIC_KEY_FILE_NAME]),
+      expect.arrayContaining([
+        "checksums.txt",
+        "checksums.txt.asc",
+        "SuwolAudioReference-0.1.4-checksums.txt",
+        "SuwolAudioReference-0.1.4-checksums.txt.asc",
+        RELEASE_PUBLIC_KEY_FILE_NAME,
+      ]),
     );
   });
 
@@ -70,7 +79,7 @@ describe("release-status-service", () => {
     const service = new ReleaseStatusService({
       platform: "win32",
       isPackaged: true,
-      currentVersion: "0.1.3",
+      currentVersion: "0.1.4",
       projectRoot: root,
     });
 
@@ -80,11 +89,11 @@ describe("release-status-service", () => {
   });
 
   it("formats checksum commands with release filenames", () => {
-    expect(formatWindowsChecksumCommand("0.1.3")).toBe(
-      'Get-FileHash ".\\Suwol.Audio.Reference.0.1.3.Windows.x64.zip" -Algorithm SHA256',
+    expect(formatWindowsChecksumCommand("0.1.4")).toBe(
+      'Get-FileHash ".\\SuwolAudioReference-0.1.4-win-x64.zip" -Algorithm SHA256',
     );
-    expect(formatLinuxAppImageChecksumCommand("0.1.3")).toBe("sha256sum 'Suwol Audio Reference-0.1.3.AppImage'");
-    expect(buildChecksumCommands("0.1.3").map((command) => command.command)).toEqual(
+    expect(formatLinuxAppImageChecksumCommand("0.1.4")).toBe("sha256sum 'SuwolAudioReference-0.1.4-linux-x64.AppImage'");
+    expect(buildChecksumCommands("0.1.4").map((command) => command.command)).toEqual(
       expect.arrayContaining([
         "gpg --import suwol-release-public-key.asc",
         "gpg --verify checksums.txt.asc checksums.txt",

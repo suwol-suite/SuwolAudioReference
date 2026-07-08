@@ -2,9 +2,8 @@ import { createHash } from "node:crypto";
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { APP_ID, PRODUCT_NAME, releaseNames } from "./release-names.mjs";
 
-const EXPECTED_APP_ID = "work.suwol.audio-reference";
-const EXPECTED_PRODUCT_NAME = "Suwol Audio Reference";
 const VALID_PLATFORMS = new Set(["win", "linux", "all"]);
 const MIN_NODE_MAJOR = 24;
 
@@ -86,15 +85,24 @@ function assertReleaseBuildMetadata(packageJson) {
     : [packageJson.build?.linux?.target].filter(Boolean);
   const normalizedWinTargets = targetNames(winTargets);
   const normalizedLinuxTargets = targetNames(linuxTargets);
-  const allowedWinTargets = new Set(["dir"]);
-  const allowedLinuxTargets = new Set(["dir", "appimage", "tar.gz", "deb", "rpm"]);
+  const normalizedMacTargets = targetNames(
+    Array.isArray(packageJson.build?.mac?.target) ? packageJson.build.mac.target : [packageJson.build?.mac?.target].filter(Boolean),
+  );
+  const allowedWinTargets = new Set(["zip"]);
+  const allowedLinuxTargets = new Set(["zip", "appimage"]);
+  const allowedMacTargets = new Set(["dmg", "zip"]);
 
-  if (!normalizedWinTargets.includes("dir")) {
-    throw new Error("package.json build.win.target must include dir for zip-first Windows packaging");
+  if (!normalizedWinTargets.includes("zip")) {
+    throw new Error("package.json build.win.target must include zip for Windows release packaging");
   }
-  for (const target of ["dir", "appimage", "tar.gz"]) {
+  for (const target of ["zip", "appimage"]) {
     if (!normalizedLinuxTargets.includes(target)) {
       throw new Error(`package.json build.linux.target must include ${target} for Linux release packaging`);
+    }
+  }
+  for (const target of ["dmg", "zip"]) {
+    if (!normalizedMacTargets.includes(target)) {
+      throw new Error(`package.json build.mac.target must include ${target} for macOS release packaging`);
     }
   }
   for (const target of normalizedWinTargets) {
@@ -107,10 +115,11 @@ function assertReleaseBuildMetadata(packageJson) {
       throw new Error(`Linux package target is outside the approved release scope: ${target}`);
     }
   }
-}
-
-function releaseArtifactName(productName, version, platformLabel) {
-  return `${productName.replace(/\s+/g, ".")}.${version}.${platformLabel}.x64.zip`;
+  for (const target of normalizedMacTargets) {
+    if (!allowedMacTargets.has(target)) {
+      throw new Error(`macOS package target is outside the approved release scope: ${target}`);
+    }
+  }
 }
 
 async function sha256File(path) {
@@ -119,13 +128,13 @@ async function sha256File(path) {
 }
 
 async function assertChecksumEntry(root, zipPath) {
-  const checksumPath = join(root, "release", "SHA256SUMS.txt");
-  await assertFile(checksumPath, "SHA256SUMS");
+  const checksumPath = join(root, "release", "checksums.txt");
+  await assertFile(checksumPath, "checksums");
   const checksumText = await readFile(checksumPath, "utf8");
   const expectedHash = await sha256File(zipPath);
   const expectedLine = `${expectedHash}  ${basename(zipPath)}`;
   if (!checksumText.split(/\r?\n/).includes(expectedLine)) {
-    throw new Error(`SHA256SUMS.txt does not contain the expected checksum entry for ${basename(zipPath)}`);
+    throw new Error(`checksums.txt does not contain the expected checksum entry for ${basename(zipPath)}`);
   }
   return checksumPath;
 }
@@ -157,14 +166,15 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
   const version = packageJson.version;
   const productName = packageJson.build?.productName;
   const appId = packageJson.build?.appId;
+  const names = releaseNames(version);
 
   if (!version || typeof version !== "string") {
     throw new Error("package.json version is missing");
   }
-  if (productName !== EXPECTED_PRODUCT_NAME) {
+  if (productName !== PRODUCT_NAME) {
     throw new Error(`Unexpected productName: ${productName}`);
   }
-  if (appId !== EXPECTED_APP_ID) {
+  if (appId !== APP_ID) {
     throw new Error(`Unexpected appId: ${appId}`);
   }
   if (packageJson.license !== "Apache-2.0") {
@@ -209,7 +219,7 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     const exe = join(winUnpacked, `${productName}.exe`);
     await assertFile(exe, "Windows unpacked executable");
     await assertPackagedResources(winUnpacked, "Windows unpacked");
-    const windowsZip = join(root, "release", releaseArtifactName(productName, version, "Windows"));
+    const windowsZip = join(root, "release", names.windowsZip);
     await assertFile(windowsZip, "Windows zip");
     if (options.requireChecksums) {
       result.checksums = await assertChecksumEntry(root, windowsZip);
@@ -223,7 +233,7 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     await assertDirectory(linuxUnpacked, "Linux unpacked folder");
     const linuxExecutable = await assertLinuxExecutable(root, productName, packageJson.name);
     await assertPackagedResources(linuxUnpacked, "Linux unpacked");
-    const linuxZip = join(root, "release", releaseArtifactName(productName, version, "Linux"));
+    const linuxZip = join(root, "release", names.linuxZip);
     await assertFile(linuxZip, "Linux zip");
     if (options.requireChecksums) {
       result.checksums = await assertChecksumEntry(root, linuxZip);

@@ -1,18 +1,27 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { access, readFile, stat, writeFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+import { releaseAssetNames, releaseNames, PRODUCT_NAME } from "./release-names.mjs";
 
 const root = process.cwd();
+const args = process.argv.slice(2);
+const targetDirectory = resolve(args.find((arg) => !arg.startsWith("--")) ?? join(root, "release"));
+const requireAll = args.includes("--require-all");
 const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const version = packageJson.version;
-const productName = packageJson.build?.productName ?? "Suwol Audio Reference";
-const targetDirectory = resolve(process.argv[2] ?? join(root, "release"));
-const productSlug = productName.replace(/\s+/g, ".");
-const artifactPattern = new RegExp(`^${productSlug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.${version}\\.(Windows|Linux)\\.x64\\.zip$`);
-const platformOrder = new Map([
-  ["Windows", 0],
-  ["Linux", 1],
-]);
+const names = releaseNames(version);
+
+async function fileExists(path) {
+  try {
+    const stats = await stat(path);
+    return stats.isFile() && stats.size > 0;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
 
 async function sha256File(path) {
   const content = await readFile(path);
@@ -20,25 +29,17 @@ async function sha256File(path) {
 }
 
 const entries = [];
-for (const fileName of await readdir(targetDirectory)) {
-  const match = fileName.match(artifactPattern);
-  if (!match) {
-    continue;
-  }
+for (const fileName of releaseAssetNames(version)) {
   const path = join(targetDirectory, fileName);
-  const fileStats = await stat(path);
-  if (fileStats.isFile() && fileStats.size > 0) {
-    entries.push({ fileName, platform: match[1], path });
+  if (await fileExists(path)) {
+    entries.push({ fileName, path });
+  } else if (requireAll) {
+    throw new Error(`Required release asset is missing for checksums: ${fileName}`);
   }
 }
 
-entries.sort((left, right) => {
-  const byPlatform = (platformOrder.get(left.platform) ?? 99) - (platformOrder.get(right.platform) ?? 99);
-  return byPlatform || left.fileName.localeCompare(right.fileName);
-});
-
 if (entries.length === 0) {
-  throw new Error(`No ${productName} ${version} zip artifacts found in ${targetDirectory}`);
+  throw new Error(`No ${PRODUCT_NAME} ${version} release assets found in ${targetDirectory}`);
 }
 
 const lines = [];
@@ -46,6 +47,17 @@ for (const entry of entries) {
   lines.push(`${await sha256File(entry.path)}  ${entry.fileName}`);
 }
 
-const checksumPath = join(targetDirectory, "SHA256SUMS.txt");
-await writeFile(checksumPath, `${lines.join("\n")}\n`, "utf8");
-console.log(`SHA256SUMS created: ${checksumPath}`);
+const content = `${lines.join("\n")}\n`;
+const checksumPath = join(targetDirectory, names.checksums);
+const versionedChecksumPath = join(targetDirectory, names.versionedChecksums);
+
+await writeFile(checksumPath, content, "utf8");
+await writeFile(versionedChecksumPath, content, "utf8");
+await access(checksumPath);
+await access(versionedChecksumPath);
+
+console.log(`checksums created: ${checksumPath}`);
+console.log(`versioned checksums created: ${versionedChecksumPath}`);
+for (const entry of entries) {
+  console.log(`checksum asset: ${basename(entry.path)}`);
+}

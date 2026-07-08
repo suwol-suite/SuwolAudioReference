@@ -2,6 +2,7 @@ import { rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { zipNameForTarget } from "./release-names.mjs";
 
 const root = process.cwd();
 const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
@@ -9,16 +10,11 @@ const productName = packageJson.build?.productName ?? "Suwol Audio Reference";
 const version = packageJson.version;
 const mode = process.argv[2] ?? "all";
 
-function releaseArtifactName(platformLabel) {
-  const productSlug = productName.replace(/\s+/g, ".");
-  return `${productSlug}.${version}.${platformLabel}.x64.zip`;
-}
-
 const TARGETS = {
   win: {
     source: join(root, "release", "win-unpacked"),
     executable: join(root, "release", "win-unpacked", `${productName}.exe`),
-    output: join(root, "release", releaseArtifactName("Windows")),
+    output: join(root, "release", zipNameForTarget(version, "win")),
     label: "Windows x64",
   },
   linux: {
@@ -28,7 +24,7 @@ const TARGETS = {
       join(root, "release", "linux-unpacked", productName),
       join(root, "release", "linux-unpacked", productName.replace(/\s+/g, "-").toLowerCase()),
     ],
-    output: join(root, "release", releaseArtifactName("Linux")),
+    output: join(root, "release", zipNameForTarget(version, "linux")),
     label: "Linux x64",
   },
 };

@@ -99,7 +99,7 @@ describe("i18n", () => {
     expect(translate("en", "updates.check")).toBe("Check for Updates");
     expect(translate("ko", "updates.check")).toContain("업데이트");
     expect(translate("en", "updates.windowsManual")).toContain("manual");
-    expect(translate("ko", "updates.linuxTarManual")).toContain("AppImage");
+    expect(translate("ko", "updates.linuxZipManual")).toContain("AppImage");
     expect(translate("en", "updates.releaseStatus")).toBe("Release Status");
     expect(translate("ko", "updates.releaseStatus")).toContain("릴리즈");
     expect(translate("en", "updates.linuxAppImageAutoUpdate")).toContain("AppImage");

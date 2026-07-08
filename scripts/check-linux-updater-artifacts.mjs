@@ -1,11 +1,13 @@
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { releaseNames } from "./release-names.mjs";
 
 const root = process.cwd();
 const args = process.argv.slice(2);
 const explicitDirectory = args.find((arg) => !arg.startsWith("--"));
 const targetDirectory = resolve(explicitDirectory ?? join(root, "release"));
 const requireSignature = args.includes("--require-signature");
+const requireChecksums = args.includes("--require-checksums") || requireSignature;
 
 async function main() {
   if (!(await exists(targetDirectory))) {
@@ -21,23 +23,28 @@ async function main() {
     console.log(`linux updater artifact check skipped on Windows: no AppImage in ${targetDirectory}`);
     return;
   }
-  const appImage = single(files, (file) => file.endsWith(".AppImage"), "Linux AppImage");
-  const tarball = single(files, (file) => file.endsWith(".tar.gz"), "Linux tar.gz");
-  const appImageBlockmap = `${appImage}.blockmap`;
-  const latestLinux = "latest-linux.yml";
-  const checksums = "checksums.txt";
+
+  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  const names = releaseNames(packageJson.version);
+  const appImage = files.includes(names.linuxAppImage)
+    ? names.linuxAppImage
+    : single(files, (file) => file.endsWith(".AppImage"), "Linux AppImage");
+  const latestLinux = names.linuxLatest;
 
   await assertFile(appImage, "Linux AppImage");
-  await assertFile(appImageBlockmap, "Linux AppImage blockmap");
-  await assertFile(tarball, "Linux tar.gz");
   await assertFile(latestLinux, "latest-linux.yml");
-  await assertFile(checksums, "checksums.txt");
-  if (requireSignature) {
-    await assertFile("checksums.txt.asc", "checksums.txt.asc");
+
+  const blockmap = `${appImage}.blockmap`;
+  if (files.includes(blockmap)) {
+    await assertFile(blockmap, "Linux AppImage blockmap");
+    console.log(`blockmap: ${blockmap}`);
+  } else {
+    console.log(`blockmap: embedded or not generated (${blockmap} not present)`);
   }
 
   const latestLinuxContent = await readFile(join(targetDirectory, latestLinux), "utf8");
-  if (!latestLinuxReferences(latestLinuxContent).includes(appImage)) {
+  const references = latestLinuxReferences(latestLinuxContent);
+  if (!references.includes(appImage)) {
     throw new Error(`latest-linux.yml does not reference ${appImage}`);
   }
   if (!/sha512:\s*\S+/m.test(latestLinuxContent)) {
@@ -47,21 +54,23 @@ async function main() {
   if (!latestVersion) {
     throw new Error("latest-linux.yml does not contain a version entry");
   }
-  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   if (latestVersion !== packageJson.version) {
     throw new Error(`latest-linux.yml version ${latestVersion} does not match package.json ${packageJson.version}`);
   }
 
-  const checksumContent = await readFile(join(targetDirectory, checksums), "utf8");
-  for (const artifact of [appImage, tarball]) {
-    if (!checksumContent.split(/\r?\n/).some((line) => line.endsWith(`  ${artifact}`))) {
-      throw new Error(`checksums.txt does not contain ${artifact}`);
+  if (requireChecksums) {
+    await assertFile(names.checksums, "checksums.txt");
+    const checksumContent = await readFile(join(targetDirectory, names.checksums), "utf8");
+    if (!checksumContent.split(/\r?\n/).some((line) => line.endsWith(`  ${appImage}`))) {
+      throw new Error(`checksums.txt does not contain ${appImage}`);
     }
+  }
+  if (requireSignature) {
+    await assertFile(names.checksumsSignature, "checksums.txt.asc");
   }
 
   console.log(`linux updater artifacts ok: ${basename(targetDirectory)}`);
   console.log(`appimage: ${appImage}`);
-  console.log(`tarball: ${tarball}`);
   console.log(`metadata: ${latestLinux}`);
 }
 

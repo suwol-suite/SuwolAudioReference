@@ -2,7 +2,7 @@ export type ReleaseDistributionKind =
   | "development"
   | "windows_zip"
   | "linux_appimage"
-  | "linux_tarball_or_zip"
+  | "linux_zip"
   | "unsupported_platform";
 
 export type ReleaseAutoUpdateReason =
@@ -21,12 +21,14 @@ export type ReleaseAssetKind =
   | "windows_zip"
   | "linux_zip"
   | "linux_appimage"
-  | "linux_tarball"
   | "linux_update_metadata"
-  | "linux_blockmap"
+  | "mac_dmg"
+  | "mac_zip"
+  | "mac_update_metadata"
   | "zip_checksums"
-  | "linux_checksums"
-  | "signed_linux_checksums"
+  | "signed_checksums"
+  | "versioned_checksums"
+  | "versioned_signed_checksums"
   | "public_key";
 
 export interface ReleaseAssetExpectation {

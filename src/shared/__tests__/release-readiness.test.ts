@@ -59,10 +59,13 @@ describe("release readiness docs and checks", () => {
         appId: "work.suwol.audio-reference",
         productName,
         win: {
-          target: ["dir"],
+          target: ["zip"],
         },
         linux: {
-          target: ["dir", "AppImage", "tar.gz"],
+          target: ["zip", "AppImage"],
+        },
+        mac: {
+          target: ["dmg", "zip"],
         },
       },
     };
@@ -78,7 +81,7 @@ describe("release readiness docs and checks", () => {
     }
 
     writeFileSync(join(root, "package.json"), JSON.stringify(packageJson), "utf8");
-    const windowsZipName = `Suwol.Audio.Reference.${APP_VERSION}.Windows.x64.zip`;
+    const windowsZipName = `SuwolAudioReference-${APP_VERSION}-win-x64.zip`;
     for (const relativePath of [
       "README.md",
       "LICENSE",
@@ -99,7 +102,7 @@ describe("release readiness docs and checks", () => {
       writeFileSync(join(root, relativePath), "fixture", "utf8");
     }
     const fixtureHash = createHash("sha256").update("fixture").digest("hex");
-    writeFileSync(join(root, "release", "SHA256SUMS.txt"), `${fixtureHash}  ${windowsZipName}\n`, "utf8");
+    writeFileSync(join(root, "release", "checksums.txt"), `${fixtureHash}  ${windowsZipName}\n`, "utf8");
 
     const output = execFileSync(
       process.execPath,
@@ -126,11 +129,10 @@ describe("release readiness docs and checks", () => {
 
   it("accepts URL-encoded AppImage references in Linux updater metadata", () => {
     const root = join(tmpdir(), `suwol-linux-updater-check-${crypto.randomUUID()}`);
-    const appImageName = `Suwol Audio Reference-${APP_VERSION}.AppImage`;
-    const tarballName = `suwol-audio-reference-${APP_VERSION}.tar.gz`;
+    const appImageName = `SuwolAudioReference-${APP_VERSION}-linux-x64.AppImage`;
 
     mkdirSync(root, { recursive: true });
-    for (const relativePath of [appImageName, `${appImageName}.blockmap`, tarballName, "checksums.txt"]) {
+    for (const relativePath of [appImageName, "checksums.txt"]) {
       writeFileSync(join(root, relativePath), "fixture", "utf8");
     }
     writeFileSync(
@@ -149,7 +151,6 @@ describe("release readiness docs and checks", () => {
 
     const checksumContent = [
       `${createHash("sha256").update("fixture").digest("hex")}  ${appImageName}`,
-      `${createHash("sha256").update("fixture").digest("hex")}  ${tarballName}`,
       "",
     ].join("\n");
     writeFileSync(join(root, "checksums.txt"), checksumContent, "utf8");
@@ -162,19 +163,14 @@ describe("release readiness docs and checks", () => {
     expect(output).toContain(`appimage: ${appImageName}`);
   });
 
-  it("documents the 0.1.3 release recovery and project export scope", () => {
+  it("documents the 0.1.4 unified release workflow scope", () => {
     const notes = readFileSync(join(process.cwd(), APP_RELEASE_NOTES_DOC), "utf8");
 
-    expect(notes).toContain("release-flow recovery");
-    expect(notes).toContain("Linux AppImage auto-update readiness");
-    expect(notes).toContain("Game Project");
-    expect(notes).toContain("Sound Usage Board");
-    expect(notes).toContain("Project Sound Pack");
-    expect(notes).toContain("Project Manifest");
-    expect(notes).toContain("Project Missing Report");
-    expect(notes).toContain("Project Codex Instruction");
-    expect(notes).toContain("Export Center game-project source");
-    expect(notes).toContain("Local export history");
-    expect(notes).toContain("121 tests passed");
+    expect(notes).toContain("unified Windows, Linux, and macOS release workflow");
+    expect(notes).toContain("Windows ZIP release artifact");
+    expect(notes).toContain("Linux AppImage release artifact");
+    expect(notes).toContain("macOS arm64 DMG and ZIP artifacts");
+    expect(notes).toContain("GPG-signed checksums");
+    expect(notes).toContain("workflow_dispatch");
   });
 });

@@ -12,7 +12,7 @@ describe("UpdatePanel helpers", () => {
   it("maps unsupported environments to the expected user-facing messages", () => {
     expect(getUpdateSupportMessageKey("linux_appimage", true)).toBe("updates.supportedLinuxAppImage");
     expect(getUpdateSupportMessageKey("unsupported_platform", false)).toBe("updates.windowsManual");
-    expect(getUpdateSupportMessageKey("unsupported_package", false)).toBe("updates.linuxTarManual");
+    expect(getUpdateSupportMessageKey("unsupported_package", false)).toBe("updates.linuxZipManual");
     expect(getUpdateSupportMessageKey("dev_mode", false)).toBe("updates.devMode");
   });
 
@@ -24,13 +24,13 @@ describe("UpdatePanel helpers", () => {
   it("maps release distribution and asset labels", () => {
     expect(getReleaseDistributionLabelKey("windows_zip")).toBe("updates.distribution.windows_zip");
     expect(getReleaseDistributionLabelKey("linux_appimage")).toBe("updates.distribution.linux_appimage");
-    expect(getReleaseAssetLabelKey("signed_linux_checksums")).toBe("updates.asset.signed_linux_checksums");
+    expect(getReleaseAssetLabelKey("signed_checksums")).toBe("updates.asset.signed_checksums");
   });
 
   it("maps release update policies", () => {
     expect(getReleaseAutoUpdatePolicyKey("linux_appimage", true)).toBe("updates.linuxAppImageAutoUpdate");
     expect(getReleaseAutoUpdatePolicyKey("windows_zip", false)).toBe("updates.windowsManualUpdate");
-    expect(getReleaseAutoUpdatePolicyKey("linux_tarball_or_zip", false)).toBe("updates.linuxTarManualUpdate");
+    expect(getReleaseAutoUpdatePolicyKey("linux_zip", false)).toBe("updates.linuxZipManualUpdate");
     expect(getReleaseAutoUpdatePolicyKey("development", false)).toBe("updates.developmentMode");
   });
 

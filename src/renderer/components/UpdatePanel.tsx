@@ -226,7 +226,7 @@ export function UpdatePanel({ settings, onSettingsChanged }: UpdatePanelProps): 
             <ul className="release-notes-list">
               <li>{t("updates.autoUpdateOnlyAppImage")}</li>
               <li>{t("updates.windowsManualUpdate")}</li>
-              <li>{t("updates.linuxTarManualUpdate")}</li>
+              <li>{t("updates.linuxZipManualUpdate")}</li>
               <li>{t("updates.noCodeSigning")}</li>
               <li>{t("updates.developmentMode")}</li>
             </ul>
@@ -245,7 +245,7 @@ export function getUpdateSupportMessageKey(reason: UpdatePlatformSupport, suppor
     return "updates.devMode";
   }
   if (reason === "unsupported_package") {
-    return "updates.linuxTarManual";
+    return "updates.linuxZipManual";
   }
   return "updates.windowsManual";
 }
@@ -268,7 +268,7 @@ export function getReleaseAutoUpdatePolicyKey(kind: ReleaseDistributionKind | un
   if (kind === "windows_zip") {
     return "updates.windowsManualUpdate";
   }
-  return "updates.linuxTarManualUpdate";
+  return "updates.linuxZipManualUpdate";
 }
 
 export function getReleaseAssetLabelKey(kind: ReleaseAssetKind): MessageKey {

@@ -15,6 +15,7 @@ export const RELEASE_PAGE_URL = "https://github.com/suwol-suite/SuwolAudioRefere
 export const LATEST_RELEASE_URL = "https://github.com/suwol-suite/SuwolAudioReference/releases/latest";
 export const CHECKSUM_HELP_URL = "https://github.com/suwol-suite/SuwolAudioReference#github-releases";
 export const RELEASE_PUBLIC_KEY_FILE_NAME = "suwol-release-public-key.asc";
+export const RELEASE_BASE_NAME = "SuwolAudioReference";
 
 export interface ReleaseStatusSupportInput {
   platform: NodeJS.Platform;
@@ -52,7 +53,7 @@ export function resolveReleaseDistribution(input: ReleaseStatusSupportInput): {
   }
   if (input.platform === "linux") {
     return {
-      distributionKind: "linux_tarball_or_zip",
+      distributionKind: "linux_zip",
       autoUpdateSupported: false,
       autoUpdateReason: "linux_manual",
     };
@@ -72,29 +73,22 @@ export function resolveReleaseDistribution(input: ReleaseStatusSupportInput): {
 }
 
 export function buildExpectedReleaseAssets(version: string, appName = APP_NAME): ReleaseAssetExpectation[] {
-  const productSlug = appName.replace(/\s+/g, ".");
-  const packageSlug = appName.replace(/\s+/g, "-").toLowerCase();
-  const appImageName = `${appName}-${version}.AppImage`;
+  const baseName = RELEASE_BASE_NAME;
   return [
     {
       kind: "windows_zip",
-      fileName: `${productSlug}.${version}.Windows.x64.zip`,
+      fileName: `${baseName}-${version}-win-x64.zip`,
       requiredFor: "manual_download",
     },
     {
       kind: "linux_zip",
-      fileName: `${productSlug}.${version}.Linux.x64.zip`,
+      fileName: `${baseName}-${version}-linux-x64.zip`,
       requiredFor: "manual_download",
     },
     {
       kind: "linux_appimage",
-      fileName: appImageName,
+      fileName: `${baseName}-${version}-linux-x64.AppImage`,
       requiredFor: "linux_auto_update",
-    },
-    {
-      kind: "linux_tarball",
-      fileName: `${packageSlug}-${version}.tar.gz`,
-      requiredFor: "manual_download",
     },
     {
       kind: "linux_update_metadata",
@@ -102,23 +96,38 @@ export function buildExpectedReleaseAssets(version: string, appName = APP_NAME):
       requiredFor: "linux_auto_update",
     },
     {
-      kind: "linux_blockmap",
-      fileName: `${appImageName}.blockmap`,
-      requiredFor: "linux_auto_update",
+      kind: "mac_dmg",
+      fileName: `${baseName}-${version}-mac-arm64.dmg`,
+      requiredFor: "manual_download",
+    },
+    {
+      kind: "mac_zip",
+      fileName: `${baseName}-${version}-mac-arm64.zip`,
+      requiredFor: "manual_download",
+    },
+    {
+      kind: "mac_update_metadata",
+      fileName: "latest-mac.yml",
+      requiredFor: "manual_download",
     },
     {
       kind: "zip_checksums",
-      fileName: "SHA256SUMS.txt",
-      requiredFor: "verification",
-    },
-    {
-      kind: "linux_checksums",
       fileName: "checksums.txt",
       requiredFor: "verification",
     },
     {
-      kind: "signed_linux_checksums",
+      kind: "versioned_checksums",
+      fileName: `${baseName}-${version}-checksums.txt`,
+      requiredFor: "verification",
+    },
+    {
+      kind: "signed_checksums",
       fileName: "checksums.txt.asc",
+      requiredFor: "verification",
+    },
+    {
+      kind: "versioned_signed_checksums",
+      fileName: `${baseName}-${version}-checksums.txt.asc`,
       requiredFor: "verification",
     },
     {
@@ -160,12 +169,11 @@ export function buildChecksumCommands(version: string, appName = APP_NAME): Rele
 }
 
 export function formatWindowsChecksumCommand(version: string, appName = APP_NAME): string {
-  const productSlug = appName.replace(/\s+/g, ".");
-  return `Get-FileHash ".\\${productSlug}.${version}.Windows.x64.zip" -Algorithm SHA256`;
+  return `Get-FileHash ".\\${RELEASE_BASE_NAME}-${version}-win-x64.zip" -Algorithm SHA256`;
 }
 
 export function formatLinuxAppImageChecksumCommand(version: string, appName = APP_NAME): string {
-  return `sha256sum ${quoteShellArg(`${appName}-${version}.AppImage`)}`;
+  return `sha256sum ${quoteShellArg(`${RELEASE_BASE_NAME}-${version}-linux-x64.AppImage`)}`;
 }
 
 export class ReleaseStatusService {
