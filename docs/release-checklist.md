@@ -24,7 +24,7 @@ This checklist is for preparing the 0.1.4 multi-platform release candidate. The 
 - `docs/manual-qa.md`, `docs/release-notes-0.1.4.md`, `docs/known-issues.md`, and `docs/windows-distribution.md` are present.
 - `LICENSE` is present.
 - `THIRD_PARTY_NOTICES.md` is present and reviewed against the final lockfile.
-- Generated icons exist under `assets/brand/` and `build/`.
+- Generated icons exist under `assets/brand/` and `build/`: Windows uses `build/icon.ico`, Linux uses `build/icon.png`, and macOS uses `build/icon.icns`.
 
 ## Build Verification
 

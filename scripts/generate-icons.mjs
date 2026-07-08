@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -110,4 +110,34 @@ if (result.status !== 0) {
   throw new Error(`Icon generation failed with exit code ${result.status ?? "unknown"}.`);
 }
 
+await writeIcnsFile(brandDir, buildDir);
+
 console.log("icons generated from assets/brand/icon-source.png");
+
+async function writeIcnsFile(inputDir, outputDir) {
+  const entries = [
+    ["icp4", "icon-16.png"],
+    ["icp5", "icon-32.png"],
+    ["icp6", "icon-64.png"],
+    ["ic07", "icon-128.png"],
+    ["ic08", "icon-256.png"],
+    ["ic09", "icon-512.png"],
+  ];
+  const chunks = [];
+  let totalLength = 8;
+
+  for (const [type, fileName] of entries) {
+    const data = await readFile(join(inputDir, fileName));
+    const chunk = Buffer.alloc(8 + data.length);
+    chunk.write(type, 0, 4, "ascii");
+    chunk.writeUInt32BE(chunk.length, 4);
+    data.copy(chunk, 8);
+    chunks.push(chunk);
+    totalLength += chunk.length;
+  }
+
+  const header = Buffer.alloc(8);
+  header.write("icns", 0, 4, "ascii");
+  header.writeUInt32BE(totalLength, 4);
+  await writeFile(join(outputDir, "icon.icns"), Buffer.concat([header, ...chunks], totalLength));
+}

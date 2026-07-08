@@ -87,9 +87,9 @@
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
       "build/icon.ico",
-      "build/icon.png"
+      "build/icon.png",
+      "build/icon.icns"
     ],
-    "icon": "build/icon.ico",
     "win": {
       "icon": "build/icon.ico",
       "target": [
@@ -105,6 +105,7 @@
       "category": "AudioVideo"
     },
     "mac": {
+      "icon": "build/icon.icns",
       "target": [
         "dmg",
         "zip"

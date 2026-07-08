@@ -120,6 +120,22 @@ function assertReleaseBuildMetadata(packageJson) {
       throw new Error(`macOS package target is outside the approved release scope: ${target}`);
     }
   }
+  assertReleaseIconMetadata(packageJson);
+}
+
+function assertReleaseIconMetadata(packageJson) {
+  if (packageJson.build?.icon === "build/icon.ico") {
+    throw new Error("package.json build.icon must not point to build/icon.ico; configure platform-specific icons instead");
+  }
+  if (packageJson.build?.win?.icon !== "build/icon.ico") {
+    throw new Error(`package.json build.win.icon must be build/icon.ico; found ${packageJson.build?.win?.icon ?? "(missing)"}`);
+  }
+  if (packageJson.build?.linux?.icon !== "build/icon.png") {
+    throw new Error(`package.json build.linux.icon must be build/icon.png; found ${packageJson.build?.linux?.icon ?? "(missing)"}`);
+  }
+  if (packageJson.build?.mac?.icon !== "build/icon.icns") {
+    throw new Error(`package.json build.mac.icon must be build/icon.icns; found ${packageJson.build?.mac?.icon ?? "(missing)"}`);
+  }
 }
 
 async function sha256File(path) {
@@ -196,6 +212,7 @@ export async function checkReleaseArtifacts(root = process.cwd(), platform = "wi
     ["docs/release-checklist.md", "release checklist"],
     ["build/icon.ico", "Windows icon"],
     ["build/icon.png", "app icon"],
+    ["build/icon.icns", "macOS icon"],
   ];
 
   for (const [relativePath, label] of requiredFiles) {

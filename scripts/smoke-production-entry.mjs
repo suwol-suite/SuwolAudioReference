@@ -8,6 +8,7 @@ const requiredFiles = [
   "dist/renderer/index.html",
   "build/icon.ico",
   "build/icon.png",
+  "build/icon.icns",
   "assets/brand/icon.svg",
   "assets/brand/icon-256.png",
   "README.md",

@@ -59,12 +59,15 @@ describe("release readiness docs and checks", () => {
         appId: "work.suwol.audio-reference",
         productName,
         win: {
+          icon: "build/icon.ico",
           target: ["zip"],
         },
         linux: {
+          icon: "build/icon.png",
           target: ["zip", "AppImage"],
         },
         mac: {
+          icon: "build/icon.icns",
           target: ["dmg", "zip"],
         },
       },
@@ -95,6 +98,7 @@ describe("release readiness docs and checks", () => {
       "docs/release-checklist.md",
       "build/icon.ico",
       "build/icon.png",
+      "build/icon.icns",
       join("release", "win-unpacked", `${productName}.exe`),
       join("release", "win-unpacked", "resources", "app.asar"),
       join("release", windowsZipName),

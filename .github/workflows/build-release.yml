@@ -337,6 +337,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check icon files
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking icon files..."
+          ls -la build || true
+          test -f build/icon.icns
+          test -f build/icon.png
+          test -f build/icon.ico
+
       - name: Build macOS DMG and ZIP
         run: npm run dist:mac:release
         env:
