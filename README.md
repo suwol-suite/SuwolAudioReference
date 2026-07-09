@@ -254,7 +254,7 @@ Phase 7 release-readiness notes:
 GitHub release workflow notes:
 
 - Main branch pushes and pull requests build Windows and Linux zip artifacts.
-- `v*` tag pushes create a GitHub Release and upload the Windows/Linux/macOS artifacts, Linux AppImage metadata, macOS metadata, signed checksum files, and public release key.
+- `v*` tag pushes create a GitHub Release after Windows/Linux artifacts finish, while the macOS signed build continues in parallel. The follow-up macOS finalize job uploads macOS artifacts, refreshes signed checksums for the complete asset set, and keeps the same release tag.
 - Linux AppImage tag releases upload `latest-linux.yml`; a sidecar blockmap is uploaded only when electron-builder generates one.
 - The automated release workflow does not publish Windows installers, Windows auto-updaters, Linux deb/rpm, Snap, Flatpak, or installer-centered assets.
 - The app update UI is Linux AppImage-only. Windows ZIP, Linux ZIP, and unsupported packages show manual download guidance and never call the updater.
@@ -396,7 +396,7 @@ Release outputs are written to `release/`, which is intentionally ignored by git
 
 The public release path is GitHub Releases on `suwol-suite/SuwolAudioReference`.
 
-Main branch pushes and pull requests create downloadable Windows/Linux workflow artifacts. A version tag or manual `workflow_dispatch` with `release_tag` creates a GitHub Release after collecting Windows, Linux, and macOS artifacts in one publish job. The release uploads ZIP/AppImage/DMG assets, `latest-linux.yml`, `latest-mac.yml`, signed checksum files, and the public release key. The existing `v0.1.1` tag belongs to the earlier GitHub Release, and the failed `v0.1.2`, `v0.1.3`, and `v0.1.5` tags remain historical failed tag workflows; those tags should not be moved or regenerated.
+Main branch pushes and pull requests create downloadable Windows/Linux workflow artifacts. A version tag or manual `workflow_dispatch` with `release_tag` now starts Windows, Linux, and macOS builds in parallel. The first publish job creates or updates the GitHub Release as soon as Windows/Linux assets are ready, then a macOS finalize job adds the signed/notarized macOS assets and overwrites the checksum files with signatures for the complete ZIP/AppImage/DMG asset set. The existing `v0.1.1` tag belongs to the earlier GitHub Release, and the failed `v0.1.2`, `v0.1.3`, and `v0.1.5` tags remain historical failed tag workflows; those tags should not be moved or regenerated.
 
 For the current release candidate:
 

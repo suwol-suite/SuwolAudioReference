@@ -392,11 +392,169 @@ jobs:
             release/latest-mac.yml
           if-no-files-found: error
 
-  publish-release:
-    name: GitHub Release
+  publish-core-release:
+    name: Publish Windows and Linux release
     needs:
       - build-windows
       - build-linux
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Print downloaded files
+        run: find . -maxdepth 6 -type f -print
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_TAG="${{ inputs.release_tag }}"
+          else
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "release_tag is required"
+            exit 1
+          fi
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *)
+              echo "release_tag must be a version tag like v0.1.6"
+              exit 1
+              ;;
+          esac
+          VERSION="${RELEASE_TAG#v}"
+          PACKAGE_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          if [ "$VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Tag version $VERSION does not match package.json version $PACKAGE_VERSION"
+            exit 1
+          fi
+          RELEASE_NOTES_FILE="docs/release-notes-${VERSION}.md"
+          test -s "$RELEASE_NOTES_FILE"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "notes=$RELEASE_NOTES_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Stage Windows and Linux release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.release.outputs.version }}"
+          mkdir -p release-assets
+          copy_asset() {
+            local name="$1"
+            local source
+            source="$(find artifacts -type f -name "$name" -print -quit)"
+            if [ -z "$source" ]; then
+              echo "Missing release asset: $name" >&2
+              exit 1
+            fi
+            cp "$source" "release-assets/$name"
+          }
+          copy_asset "SuwolAudioReference-${VERSION}-win-x64.zip"
+          copy_asset "SuwolAudioReference-${VERSION}-linux-x64.zip"
+          copy_asset "SuwolAudioReference-${VERSION}-linux-x64.AppImage"
+          copy_asset "latest-linux.yml"
+          cp suwol-release-public-key.asc release-assets/
+          find release-assets -maxdepth 1 -type f -print | sort
+
+      - name: Verify staged release assets
+        run: npm run verify:release-assets -- release-assets
+
+      - name: Create checksums
+        run: npm run checksums -- release-assets
+
+      - name: Import GPG private key
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="${RUNNER_TEMP}/gnupg"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
+          echo "GPG_PRIVATE_KEY_B64 present: $([ -n "${GPG_PRIVATE_KEY_B64:-}" ] && echo yes || echo no)"
+          echo "GPG_PRIVATE_KEY present: $([ -n "${GPG_PRIVATE_KEY:-}" ] && echo yes || echo no)"
+          echo "GPG_PASSPHRASE present: $([ -n "${GPG_PASSPHRASE:-}" ] && echo yes || echo no)"
+          if [ -n "${GPG_PRIVATE_KEY_B64:-}" ]; then
+            printf '%s' "$GPG_PRIVATE_KEY_B64" | base64 --decode > "${RUNNER_TEMP}/suwol-release-private.asc"
+          elif [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+            printf '%s' "$GPG_PRIVATE_KEY" > "${RUNNER_TEMP}/suwol-release-private.asc"
+          else
+            echo "GPG_PRIVATE_KEY_B64 or GPG_PRIVATE_KEY is required" >&2
+            exit 1
+          fi
+          test -n "${GPG_PASSPHRASE:-}"
+          gpg --batch --import "${RUNNER_TEMP}/suwol-release-private.asc"
+          rm -f "${RUNNER_TEMP}/suwol-release-private.asc"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+        env:
+          GPG_PRIVATE_KEY_B64: ${{ secrets.GPG_PRIVATE_KEY_B64 }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Sign checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          VERSION="${{ steps.release.outputs.version }}"
+          printf '%s' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 \
+            --armor --detach-sign --output checksums.txt.asc checksums.txt
+          cp checksums.txt.asc "SuwolAudioReference-${VERSION}-checksums.txt.asc"
+          test -s checksums.txt.asc
+          test -s "SuwolAudioReference-${VERSION}-checksums.txt.asc"
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Verify checksums and signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          VERSION="${{ steps.release.outputs.version }}"
+          gpg --import suwol-release-public-key.asc
+          gpg --verify checksums.txt.asc checksums.txt
+          gpg --verify "SuwolAudioReference-${VERSION}-checksums.txt.asc" "SuwolAudioReference-${VERSION}-checksums.txt"
+          cd ..
+          npm run verify:checksums -- release-assets --require-signature
+          npm run verify:release-assets -- release-assets
+
+      - name: Create or update GitHub release with Windows and Linux assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ steps.release.outputs.tag }}"
+          RELEASE_NOTES_FILE="${{ steps.release.outputs.notes }}"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* \
+              --title "Suwol Audio Reference $RELEASE_TAG" \
+              --notes-file "$RELEASE_NOTES_FILE"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  finalize-macos-release:
+    name: Add macOS artifacts and finalize release
+    needs:
+      - publish-core-release
       - build-macos
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -452,7 +610,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "notes=$RELEASE_NOTES_FILE" >> "$GITHUB_OUTPUT"
 
-      - name: Stage release assets
+      - name: Stage complete release assets
         shell: bash
         run: |
           set -euo pipefail
@@ -479,9 +637,9 @@ jobs:
           find release-assets -maxdepth 1 -type f -print | sort
 
       - name: Verify staged release assets
-        run: npm run verify:release-assets -- release-assets
+        run: npm run verify:release-assets -- release-assets --require-all
 
-      - name: Create checksums
+      - name: Create complete checksums
         run: npm run checksums -- release-assets --require-all
 
       - name: Import GPG private key
@@ -511,7 +669,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Sign checksums
+      - name: Sign complete checksums
         shell: bash
         run: |
           set -euo pipefail
@@ -526,7 +684,7 @@ jobs:
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Verify checksums and signatures
+      - name: Verify complete checksums and signatures
         shell: bash
         run: |
           set -euo pipefail
@@ -539,18 +697,12 @@ jobs:
           npm run verify:checksums -- release-assets --require-all --require-signature
           npm run verify:release-assets -- release-assets --require-all
 
-      - name: Create or update GitHub release
+      - name: Upload macOS artifacts and final checksums
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_TAG="${{ steps.release.outputs.tag }}"
-          RELEASE_NOTES_FILE="${{ steps.release.outputs.notes }}"
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-assets/* --clobber
-          else
-            gh release create "$RELEASE_TAG" release-assets/* \
-              --title "Suwol Audio Reference $RELEASE_TAG" \
-              --notes-file "$RELEASE_NOTES_FILE"
-          fi
+          gh release view "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
         env:
           GH_TOKEN: ${{ github.token }}

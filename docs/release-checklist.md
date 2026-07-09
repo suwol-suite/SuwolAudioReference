@@ -125,7 +125,7 @@ Include:
 - Release tags use the `vX.Y.Z` format, for example `v0.1.6`.
 - The tag must match `package.json` version exactly, with a leading `v`.
 - `npm run check:release-tag -- --tag=vX.Y.Z` must pass before pushing a release tag.
-- Tag pushes create a GitHub Release and upload Windows/Linux zip assets, Linux AppImage assets, macOS arm64 DMG/zip assets, update metadata, signed checksum files, and the public release key.
+- Tag pushes run Windows, Linux, and macOS builds in parallel. Windows/Linux completion creates or updates the GitHub Release first, then macOS completion uploads arm64 DMG/zip assets and refreshes signed checksum files for the complete release asset set.
 - Tag pushes upload Linux AppImage updater metadata (`latest-linux.yml`) and macOS update metadata (`latest-mac.yml`).
 - Before creating a tag, confirm `package.json` version and the matching `docs/release-notes-X.Y.Z.md` file exist.
 - Do not tag from an unverified working tree.

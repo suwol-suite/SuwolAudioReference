@@ -19,7 +19,7 @@ Use this checklist before an MVP release candidate is accepted. Record the teste
 - `npm.cmd run checksums` and `npm.cmd run check:release -- --platform win --require-checksums` pass when publishing checksum files.
 - The GitHub Actions Linux job passes `npm run dist:linux:dir`, `npm run zip:linux`, `npm run check:release -- --platform linux`, and tag/manual Linux AppImage packaging.
 - The GitHub Actions Linux tag/manual job signs checksums before running `npm run check:linux-updater -- release --require-signature`, then uploads the AppImage, `latest-linux.yml`, `checksums.txt`, `checksums.txt.asc`, and public release key. Sidecar blockmap upload is optional when electron-builder generates one.
-- The GitHub Actions macOS tag/manual job signs, notarizes, and uploads the arm64 DMG/zip assets when Apple secrets are configured.
+- The GitHub Actions macOS tag/manual job runs in parallel with Windows/Linux, signs and notarizes arm64 DMG/zip assets when Apple secrets are configured, then the macOS finalize job refreshes signed checksums for the complete release asset set.
 - `package.json` version is `0.1.6`, `engines.node` is Node 24+, license is `Apache-2.0`, Windows packaging remains zip-first, Linux release packaging includes zip/AppImage, and macOS release packaging includes arm64 DMG/zip.
 - Update settings default to `checkOnStartup=false`, `autoDownload=false`, and Linux AppImage-only policy.
 - Settings Updates shows the Release Status dashboard, current version, distribution type, expected release assets, checksum commands, and GitHub Releases actions.
